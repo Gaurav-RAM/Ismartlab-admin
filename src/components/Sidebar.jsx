@@ -12,6 +12,10 @@ import {
   FiBell,
   FiLifeBuoy,
   FiChevronLeft,
+  FiList,
+  FiClock,
+  FiCircle,
+  FiCreditCard,
 } from 'react-icons/fi';
 import { FaFlask } from 'react-icons/fa';
 
@@ -26,7 +30,20 @@ const sections = [
   },
   {
     heading: 'USER MANAGEMENT',
-    items: [{ label: 'Collectors', icon: <FiUsers />, path: '/collectors' }],
+    items: [
+      {
+        label: 'Collectors',
+        icon: <FiUsers />,
+        // NEW: dropdown children
+        children: [
+          { label: 'Collector List', icon: <FiList />, path: '/collectors' },
+          { label: 'Pending Collector List', icon: <FiClock />, path: '/collectors/pending' },
+          { label: 'Unassigned Collector List', icon: <FiCircle />, path: '/collectors/unassigned' },
+          { label: 'Collector Document List', icon: <FiFileText />, path: '/collectors/documents' },
+          { label: 'Collector Banks', icon: <FiCreditCard />, path: '/collectors/banks' },
+        ],
+      },
+    ],
   },
   {
     heading: 'LABORATORY MANAGEMENT',
@@ -66,7 +83,8 @@ const sections = [
 export default function Sidebar({
   logoSrc = '/logo.svg',
   brandName = 'IsmartLabs',
-  defaultOpen = ['MAIN', 'LABORATORY MANAGEMENT', 'FINANCIAL MANAGEMENT'],
+  defaultOpen = ['MAIN', 'LABORATORY MANAGEMENT', 'FINANCIAL MANAGEMENT', 'USER MANAGEMENT'],
+  defaultOpenSub = ['Collectors'], // NEW: open the Collectors dropdown by default
   collapsed = false,
   onToggle = () => {},
 }) {
@@ -75,6 +93,14 @@ export default function Sidebar({
     const n = new Set(open);
     n.has(h) ? n.delete(h) : n.add(h);
     setOpen(n);
+  };
+
+  // NEW: submenu open state
+  const [submenu, setSubmenu] = useState(() => new Set(defaultOpenSub));
+  const toggleSubmenu = (label) => {
+    const n = new Set(submenu);
+    n.has(label) ? n.delete(label) : n.add(label);
+    setSubmenu(n);
   };
 
   const width = collapsed ? 72 : 260;
@@ -109,7 +135,7 @@ export default function Sidebar({
           alt="Brand"
           style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }}
         />
-        {!collapsed && <div style={{ fontWeight: 600 }}>KiviLabs</div>}
+        {!collapsed && <div style={{ fontWeight: 600 }}>{brandName}</div>}
         <button
           type="button"
           onClick={onToggle}
@@ -160,33 +186,109 @@ export default function Sidebar({
 
           {(collapsed || open.has(sec.heading)) && (
             <nav>
-              {sec.items.map((it) => (
-                <a
-                  key={it.label}
-                  href={it.path}
-                  title={collapsed ? it.label : undefined}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '10px 12px',
-                    margin: '6px 0',
-                    borderRadius: 10,
-                    color: 'var(--text)',
-                    textDecoration: 'none',
-                    background: it.label === 'Dashboard' ? 'var(--primary-50)' : 'transparent',
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                  }}
-                >
-                  <span style={{ color: 'var(--primary-600)', fontSize: 18 }}>{it.icon}</span>
-                  {!collapsed && <span>{it.label}</span>}
-                  {!collapsed && (
-                    <span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>
-                      <FiChevronRight />
-                    </span>
-                  )}
-                </a>
-              ))}
+              {sec.items.map((it) => {
+                // If item has children, render a toggleable disclosure
+                if (it.children && it.children.length) {
+                  const contentId = `submenu-${it.label.replace(/\s+/g, '-').toLowerCase()}`;
+                  const isOpen = submenu.has(it.label);
+                  return (
+                    <div key={it.label}>
+                      <button
+                        type="button"
+                        title={collapsed ? it.label : undefined}
+                        onClick={() => toggleSubmenu(it.label)}
+                        aria-expanded={isOpen}
+                        aria-controls={contentId}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '10px 12px',
+                          margin: '6px 0',
+                          borderRadius: 10,
+                          color: 'var(--text)',
+                          background: 'transparent',
+                          border: 'none',
+                          justifyContent: collapsed ? 'center' : 'flex-start',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span style={{ color: 'var(--primary-600)', fontSize: 18 }}>{it.icon}</span>
+                        {!collapsed && <span>{it.label}</span>}
+                        {!collapsed && (
+                          <span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>
+                            {isOpen ? <FiChevronDown /> : <FiChevronRight />}
+                          </span>
+                        )}
+                      </button>
+
+                      {/* Children */}
+                      {!collapsed && isOpen && (
+                        <div
+                          id={contentId}
+                          role="group"
+                          aria-label={`${it.label} submenu`}
+                          style={{ marginLeft: 8 }}
+                        >
+                          {it.children.map((child) => (
+                            <a
+                              key={child.label}
+                              href={child.path}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                padding: '8px 12px 8px 36px',
+                                margin: '4px 0',
+                                borderRadius: 8,
+                                color: 'var(--text)',
+                                textDecoration: 'none',
+                                background: 'transparent',
+                                fontSize: 14,
+                              }}
+                            >
+                              <span style={{ color: 'var(--primary-600)', fontSize: 16 }}>
+                                {child.icon}
+                              </span>
+                              <span>{child.label}</span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Regular leaf item
+                return (
+                  <a
+                    key={it.label}
+                    href={it.path}
+                    title={collapsed ? it.label : undefined}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 12px',
+                      margin: '6px 0',
+                      borderRadius: 10,
+                      color: 'var(--text)',
+                      textDecoration: 'none',
+                      background: it.label === 'Dashboard' ? 'var(--primary-50)' : 'transparent',
+                      justifyContent: collapsed ? 'center' : 'flex-start',
+                    }}
+                  >
+                    <span style={{ color: 'var(--primary-600)', fontSize: 18 }}>{it.icon}</span>
+                    {!collapsed && <span>{it.label}</span>}
+                    {!collapsed && (
+                      <span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>
+                        <FiChevronRight />
+                      </span>
+                    )}
+                  </a>
+                );
+              })}
             </nav>
           )}
         </div>

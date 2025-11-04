@@ -26,8 +26,8 @@ import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { DataGrid } from '@mui/x-data-grid';
-import DataPageWrapper from "../components/DataPageWrapper.jsx"
 import { useNavigate, Outlet, Link as RouterLink } from 'react-router-dom';
+import DataPageWrapper from "/src/components/DataPageWrapper.jsx";
 
 const rows = [
   {
@@ -99,7 +99,7 @@ const NameEmailCell = ({ person }) => (
   </Stack>
 );
 
-export default function AppointmentsPage() {
+export default function CollectorListPage() {
   const [action, setAction] = React.useState('');
   const [query, setQuery] = React.useState('');
 
@@ -214,10 +214,10 @@ export default function AppointmentsPage() {
 
   return (
        <DataPageWrapper
-      title="Appointments"
+      title="Collectors"
       breadcrumbs={[
         { label: "Dashboard", to: "/dashboard" },
-        { label: "Appointments" }
+        { label: "Collectors" }
       ]}
       rows={filteredRows}
       columns={columns}
