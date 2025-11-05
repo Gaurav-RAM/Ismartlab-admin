@@ -1,0 +1,27 @@
+/* src/components/CollectorListUnified.css */
+.clu-wrap { display: flex; flex-direction: column; gap: 12px; }
+.clu-top { display: flex; justify-content: space-between; align-items: center; }
+.clu-title { margin: 0; font-size: 18px; }
+.clu-right { display: flex; gap: 10px; align-items: center; }
+.clu-search { display: flex; align-items: center; border: 1px solid #e0e6ef; border-radius: 6px; overflow: hidden; }
+.clu-search-label { padding: 8px 10px; background: #f3f6fb; color: #6b7280; font-size: 12px; }
+.clu-input { border: 0; outline: 0; padding: 8px 10px; min-width: 260px; }
+.clu-actions { display: flex; gap: 10px; align-items: center; }
+.clu-select { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px; background: #fff; }
+.clu-btn { border: 1px solid #d1d5db; background: #f9fafb; color: #111827; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+.clu-btn:hover { background: #f3f4f6; }
+.clu-btn:disabled { opacity: .5; cursor: not-allowed; }
+.clu-btn.outline { background: #fff; }
+.clu-btn.danger { border-color: #ef4444; color: #ef4444; background: #fff; }
+.clu-btn.small { padding: 4px 8px; font-size: 12px; }
+.clu-btn-group { display: inline-flex; gap: 6px; }
+.clu-card { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.clu-table { width: 100%; border-collapse: collapse; }
+.clu-table thead { background: #4157a5; color: #fff; }
+.clu-table th, .clu-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; font-size: 14px; }
+.clu-empty { text-align: center; padding: 32px; color: #6b7280; }
+.clu-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.clu-left { display: flex; align-items: center; gap: 8px; color: #374151; }
+.clu-range { margin-left: 8px; color: #6b7280; }
+.clu-pager { display: flex; align-items: center; gap: 8px; }
+.clu-page { color: #6b7280; }

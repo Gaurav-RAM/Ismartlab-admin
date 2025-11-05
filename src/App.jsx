@@ -9,6 +9,11 @@ import Labs from './pages/Labs.jsx';
 import TestCases from './pages/TestCases.jsx';
 import Login from './pages/Login.jsx';
 import RequireAuth from './routes/RequireAuth.jsx';
+import CreateCollectorForm from './pages/collectors/CollectorForm.jsx';
+import CollectorListPage from './pages/collectors/CollectorListPage.jsx';
+import CollectorUnassignedList from './pages/collectors/CollectorUnassignedList.jsx';
+import CollectorDocumentList from './pages/collectors/CollectorDocumentList.jsx';
+
 
 export default function App() {
   return (
@@ -22,7 +27,11 @@ export default function App() {
           {/* Make /appointments a parent and nest "new" under it */}
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/appointments/new" element={<AppointmentCreatePage />} />
-
+         <Route path="/collectors/new" element={<CreateCollectorForm />} />
+         <Route path="/collectors/list" element={<CollectorListPage />} />
+         <Route path="/collectors/unassigned" element={<CollectorUnassignedList />} />
+         <Route path="/collectors/unassigned" element={<CollectorUnassignedList />} />
+         <Route path="/collectors/document" element={<CollectorDocumentList />} />
           <Route path="/collectors" element={<Collectors />} />
           <Route path="/labs" element={<Labs />} />
           <Route path="/test-cases" element={<TestCases />} />

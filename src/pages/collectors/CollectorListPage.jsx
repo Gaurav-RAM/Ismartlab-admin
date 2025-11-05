@@ -106,10 +106,8 @@ export default function CollectorListPage() {
   // Programmatic navigation
   const navigate = useNavigate(); // useNavigate hook [web:1][web:2]
   const handleNew = () => {
-    // If /appointments has a nested child route path="new", use relative navigation:
-    navigate('new');
-    // If your routes are siblings instead of nested, use:
-    // navigate('/appointments/new');
+    navigate('collectorlist');
+
   };
 
   const columns = React.useMemo(

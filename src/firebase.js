@@ -1,8 +1,8 @@
-// firebase.js
-import { initializeApp } from "firebase/app";
+// src/firebase.js
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
+import { initializeFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore"; // <-- change this import
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
@@ -15,12 +15,19 @@ const firebaseConfig = {
   measurementId: "G-Z4W2QEGGC9"
 };
 
-const app = initializeApp(firebaseConfig);
-if (typeof window !== "undefined") getAnalytics(app);
+// Guard to avoid duplicate default app
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig); // <-- key line
 
-// Choose ONE of these:
+// Only run analytics in browser
+if (typeof window !== "undefined") {
+  try { getAnalytics(app); } catch {}
+}
+
+// Firestore (keep your custom options if needed)
 export const db = initializeFirestore(app, { experimentalForceLongPolling: true });
-// export const db = initializeFirestore(app, { useFetchStreams: false });
+// Alternative (no special transport settings):
+// export const db = getFirestore(app);
 
 export const auth = getAuth(app);
 export const realtimeDB = getDatabase(app);
+export default app;

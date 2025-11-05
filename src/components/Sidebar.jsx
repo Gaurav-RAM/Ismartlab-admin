@@ -34,7 +34,6 @@ const sections = [
       {
         label: 'Collectors',
         icon: <FiUsers />,
-        // NEW: dropdown children
         children: [
           { label: 'Collector List', icon: <FiList />, path: '/collectors' },
           { label: 'Pending Collector List', icon: <FiClock />, path: '/collectors/pending' },
@@ -84,10 +83,14 @@ export default function Sidebar({
   logoSrc = '/logo.svg',
   brandName = 'IsmartLabs',
   defaultOpen = ['MAIN', 'LABORATORY MANAGEMENT', 'FINANCIAL MANAGEMENT', 'USER MANAGEMENT'],
-  defaultOpenSub = ['Collectors'], // NEW: open the Collectors dropdown by default
-  collapsed = false,
-  onToggle = () => {},
+  defaultOpenSub = ['Collectors'],
+
+  // Controlled prop pattern: if `collapsed` is provided, component is controlled; otherwise it self-manages. 
+  // NOTE: no default value here to allow detection of "controlled vs uncontrolled".
+  collapsed: controlledCollapsed,
+  onToggle, // optional; used only when controlled
 }) {
+  // Section open state
   const [open, setOpen] = useState(() => new Set(defaultOpen));
   const toggleSection = (h) => {
     const n = new Set(open);
@@ -95,12 +98,26 @@ export default function Sidebar({
     setOpen(n);
   };
 
-  // NEW: submenu open state
+  // Submenu open state
   const [submenu, setSubmenu] = useState(() => new Set(defaultOpenSub));
   const toggleSubmenu = (label) => {
     const n = new Set(submenu);
     n.has(label) ? n.delete(label) : n.add(label);
     setSubmenu(n);
+  };
+
+  // Uncontrolled collapsed state fallback
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
+  const isControlled = controlledCollapsed !== undefined;
+  const collapsed = isControlled ? controlledCollapsed : uncontrolledCollapsed;
+
+  // Single toggle handler used by the button
+  const handleToggle = () => {
+    if (isControlled) {
+      onToggle?.(); // let parent flip the prop
+    } else {
+      setUncontrolledCollapsed((c) => !c); // self-manage when uncontrolled
+    }
   };
 
   const width = collapsed ? 72 : 260;
@@ -138,7 +155,7 @@ export default function Sidebar({
         {!collapsed && <div style={{ fontWeight: 600 }}>{brandName}</div>}
         <button
           type="button"
-          onClick={onToggle}
+          onClick={handleToggle}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={collapsed ? 'Expand' : 'Collapse'}
           style={{
@@ -187,7 +204,6 @@ export default function Sidebar({
           {(collapsed || open.has(sec.heading)) && (
             <nav>
               {sec.items.map((it) => {
-                // If item has children, render a toggleable disclosure
                 if (it.children && it.children.length) {
                   const contentId = `submenu-${it.label.replace(/\s+/g, '-').toLowerCase()}`;
                   const isOpen = submenu.has(it.label);
@@ -223,7 +239,6 @@ export default function Sidebar({
                         )}
                       </button>
 
-                      {/* Children */}
                       {!collapsed && isOpen && (
                         <div
                           id={contentId}
