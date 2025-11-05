@@ -1,9 +1,9 @@
 // src/pages/Login.jsx
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { FiCopy } from 'react-icons/fi';
+import { FiCopy, FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase"; // ✅ import Firebase auth
+import { auth } from "../firebase";
 
 const demos = [
   { label: 'admin@gmail.com', email: 'admin@gmail.com', password: '12345678' },
@@ -18,6 +18,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '', remember: false });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -28,13 +29,10 @@ export default function Login() {
     e.preventDefault();
     setErr('');
     setLoading(true);
-
     try {
-      // ✅ Firebase login
       const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
-      // ✅ Save token if remember me
       if (form.remember) {
         localStorage.setItem("authToken", await user.getIdToken());
       } else {
@@ -53,78 +51,109 @@ export default function Login() {
     await navigator.clipboard.writeText(`${email}\n${password}`);
   };
 
+  const fillDemo = (email, password) => {
+    setForm(prev => ({ ...prev, email, password }));
+  };
+
   return (
-    <div style={{ display:'grid', placeItems:'center', minHeight:'100vh', padding:'24px' }}>
-      <div className="card" style={{ width:'min(560px, 92vw)'}}>
-        <div style={{ display:'flex', justifyContent:'center', marginBottom: 8 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div className="logo" />
-            <div className="brand-name">IsmartLabs</div>
-          </div>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="brand">
+          <div className="logo" />
+          <div className="brand-name">IsmartLabs</div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display:'grid', gap:14 }}>
-          <label style={{ fontWeight:600 }}>Email <span style={{ color:'#ef4444' }}>*</span></label>
-          <input
-            name="email"
-            type="email"
-            placeholder="Enter Email"
-            value={form.email}
-            onChange={onChange}
-            className="input"
-            required
-          />
+        <h2 className="title">Welcome back</h2>
 
-          <label style={{ fontWeight:600 }}>Password <span style={{ color:'#ef4444' }}>*</span></label>
-          <input
-            name="password"
-            type="password"
-            placeholder="Enter Password"
-            value={form.password}
-            onChange={onChange}
-            className="input"
-            required
-          />
+        <form onSubmit={handleSubmit} className="form">
+          <div className="form-group">
+            <label htmlFor="email">Email <span className="req">*</span></label>
+            <div className="input-wrap">
+              <FiMail className="input-ico" aria-hidden />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email"
+                value={form.email}
+                onChange={onChange}
+                className="input"
+                required
+                autoComplete="username"
+              />
+            </div>
+          </div>
 
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <label style={{ display:'flex', gap:8, alignItems:'center', color:'var(--muted)' }}>
+          <div className="form-group">
+            <label htmlFor="password">Password <span className="req">*</span></label>
+            <div className="input-wrap">
+              <FiLock className="input-ico" aria-hidden />
+              <input
+                id="password"
+                name="password"
+                type={showPwd ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={form.password}
+                onChange={onChange}
+                className="input"
+                required
+                autoComplete="current-password"
+                aria-invalid={!!err}
+              />
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setShowPwd(v => !v)}
+                aria-label={showPwd ? 'Hide password' : 'Show password'}
+              >
+                {showPwd ? <FiEyeOff /> : <FiEye />}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label className="check">
               <input type="checkbox" name="remember" checked={form.remember} onChange={onChange} />
-              Remember Me
+              Remember me
             </label>
-            <Link to="#" style={{ color:'var(--primary)' }}>Forgot Password?</Link>
+            <Link to="#" className="link">Forgot Password?</Link>
           </div>
 
-          {err && <div style={{ color:'#ef4444', fontSize:14 }}>{err}</div>}
+          {err && <div className="error">{err}</div>}
 
-          <div style={{ display:'flex', justifyContent:'flex-end' }}>
-            <button className="btn" type="submit" disabled={loading}>
-              {loading ? 'Logging in…' : 'Login'}
-            </button>
-          </div>
-
-          <div>
-            <Link to="#" style={{ color:'var(--primary)' }}>Register as Vendor</Link>
-          </div>
+          <button className="btn btn-primary btn-block" type="submit" disabled={loading}>
+            {loading ? 'Logging in…' : 'Login'}
+          </button>
         </form>
 
-        <hr style={{ border:'none', borderTop:'1px solid var(--border)', margin:'16px 0' }} />
-        <div style={{ textAlign:'center', fontWeight:700, marginBottom:8 }}>Demo Accounts</div>
+        <hr className="divider" />
+        <div className="demo-title">Demo accounts</div>
 
-        <div style={{ display:'grid', gap:12 }}>
+        <div className="demo-list">
           {demos.map((d) => (
-            <div key={d.email} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0' }}>
-              <div>
-                <div style={{ fontWeight:600 }}>{d.email}</div>
-                <div style={{ color:'var(--muted)', fontSize:14 }}>{d.password}</div>
+            <div key={d.email} className="demo-row">
+              <div className="demo-cred">
+                <div className="demo-email">{d.email}</div>
+                <div className="demo-pass">{d.password}</div>
               </div>
-              <button
-                aria-label="Copy demo credentials"
-                onClick={() => copy(d.email, d.password)}
-                className="btn"
-                style={{ background:'transparent', color:'var(--text)', border:'1px solid var(--border)', padding:'8px 10px' }}
-              >
-                <FiCopy />
-              </button>
+              <div className="demo-actions">
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={() => fillDemo(d.email, d.password)}
+                  aria-label="Fill demo credentials"
+                >
+                  Use
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={() => copy(d.email, d.password)}
+                  aria-label="Copy demo credentials"
+                >
+                  <FiCopy />
+                </button>
+              </div>
             </div>
           ))}
         </div>
