@@ -107,7 +107,6 @@ export default function CollectorListPage() {
   const navigate = useNavigate(); // useNavigate hook [web:1][web:2]
   const handleNew = () => {
     navigate('collectorlist');
-
   };
 
   const columns = React.useMemo(

@@ -23,6 +23,10 @@ export default function CollectorListUnified(props) {
     rowKey,
     renderActions,
     emptyText = 'No Data Found',
+     headerSlot,           // NEW: optional custom header bar
+    renderHead,           // NEW: optional custom <tr> for table header
+    renderRow,            // NEW: optional custom <tr> per data row
+    hideActionsRow = false
   } = props;
 
   const isDocs = variant === 'documents';
@@ -39,53 +43,61 @@ export default function CollectorListUnified(props) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="clu-wrap">
+     <div className="clu-wrap">
       {/* Header */}
-      <div className="clu-top">
-        <h5 className="clu-title">{resolvedTitle}</h5>
-        <div className="clu-right">
-          <div className="clu-search">
-            <span className="clu-search-label">search…</span>
-            <input
-              className="clu-input"
-              value={search}
-              onChange={(e) => onSearch(e.target.value)}
-              placeholder="search…"
-            />
+      {headerSlot ? (
+        <div className="clu-top">{headerSlot()}</div>
+      ) : (
+        <div className="clu-top">
+          <h5 className="clu-title">{resolvedTitle}</h5>
+          <div className="clu-right">
+            <div className="clu-search">
+              <span className="clu-search-label">search…</span>
+              <input
+                className="clu-input"
+                value={search}
+                onChange={(e) => onSearch(e.target.value)}
+                placeholder="search…"
+              />
+            </div>
+            <button className="clu-btn outline" onClick={onOpenAdvancedFilter}>
+              Advanced Filter
+            </button>
           </div>
-          <button className="clu-btn outline" onClick={onOpenAdvancedFilter}>
-            Advanced Filter
+        </div>
+      )}
+
+      {/* Bulk actions row (can be hidden if headerSlot contains these controls) */}
+      {!hideActionsRow && (
+        <div className="clu-actions">
+          <select
+            className="clu-select"
+            value={selectedAction}
+            onChange={(e) => onActionChange(e.target.value)}
+          >
+            <option value="">No action</option>
+            {bulkActions.map((b) => (
+              <option key={b.value} value={b.value}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+          <button className="clu-btn" disabled={!selectedAction} onClick={onApply}>
+            Apply
+          </button>
+          <button className="clu-btn danger" onClick={onExport}>
+            Export
           </button>
         </div>
-      </div>
-
-      {/* Bulk actions */}
-      <div className="clu-actions">
-        <select
-          className="clu-select"
-          value={selectedAction}
-          onChange={(e) => onActionChange(e.target.value)}
-        >
-          <option value="">No action</option>
-          {bulkActions.map((b) => (
-            <option key={b.value} value={b.value}>
-              {b.label}
-            </option>
-          ))}
-        </select>
-        <button className="clu-btn" disabled={!selectedAction} onClick={onApply}>
-          Apply
-        </button>
-        <button className="clu-btn danger" onClick={onExport}>
-          Export
-        </button>
-      </div>
+      )}
 
       {/* Table */}
       <div className="clu-card">
         <table className="clu-table">
           <thead>
-            {!isDocs ? (
+            {renderHead ? (
+              renderHead()
+            ) : !isDocs ? (
               <tr>
                 <th>Collector</th>
                 <th>Lab</th>
@@ -106,10 +118,12 @@ export default function CollectorListUnified(props) {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="clu-empty" colSpan={!isDocs ? 6 : 4}>
+                <td className="clu-empty" colSpan={renderHead ? 99 : !isDocs ? 6 : 4}>
                   {emptyText}
                 </td>
               </tr>
+            ) : renderRow ? (
+              rows.map((r, i) => renderRow(r, i))
             ) : !isDocs ? (
               rows.map((r, i) => (
                 <tr key={rowKey ? rowKey(r, i) : r.id ?? i}>
@@ -140,12 +154,8 @@ export default function CollectorListUnified(props) {
                       renderActions(r)
                     ) : (
                       <div className="clu-btn-group">
-                        <a className="clu-btn small outline" href={r.url} target="_blank" rel="noreferrer">
-                          View
-                        </a>
-                        <a className="clu-btn small" href={r.url} download>
-                          Download
-                        </a>
+                        <a className="clu-btn small outline" href={r.url} target="_blank" rel="noreferrer">View</a>
+                        <a className="clu-btn small" href={r.url} download>Download</a>
                       </div>
                     )}
                   </td>

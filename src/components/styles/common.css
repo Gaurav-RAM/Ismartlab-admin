@@ -25,3 +25,39 @@
 .clu-range { margin-left: 8px; color: #6b7280; }
 .clu-pager { display: flex; align-items: center; gap: 8px; }
 .clu-page { color: #6b7280; }
+/* Header button */
+.clu-thbtn { display:flex; align-items:center; gap:6px; background:transparent; border:0; color:inherit; font:inherit; cursor:pointer; padding:0; }
+
+/* Double-triangle sort icon */
+.clu-sort { position:relative; width:10px; height:16px; display:inline-block; }
+.clu-sort::before, .clu-sort::after { content:""; position:absolute; left:0; right:0; margin:auto; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; }
+.clu-sort::before { top:0; border-bottom:7px solid #aebdf5; }  /* up arrow (idle) */
+.clu-sort::after  { bottom:0; border-top:7px solid #aebdf5; }  /* down arrow (idle) */
+.clu-sort.asc::before  { border-bottom-color:#ffffff; }         /* highlight up when ascending */
+.clu-sort.desc::after  { border-top-color:#ffffff; }            /* highlight down when descending */
+
+/* th container: reserve space on the right for the icon */
+.clu-th { position: relative; padding-right: 28px; } /* keep label left, icon right */  /* [web:190][web:193] */
+
+/* header button spans full th for easy click target */
+.clu-thbtn { display: block; width: 100%; text-align: left; background: transparent; border: 0; padding: 0; line-height: 1; }  /* [web:183][web:185] */
+
+/* place the icon at the right, vertically centered */
+.clu-thbtn .clu-sort { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }  /* [web:190][web:193] */
+
+/* keep previous icon drawing (double chevrons + center line) */
+:root {
+  --clu-sort-idle: #bcc7fb;
+  --clu-sort-active: #ffffff;
+}  /* [web:155] */
+
+.clu-sort { position: relative; width: 12px; height: 20px;
+  background: linear-gradient(to bottom, transparent calc(50% - 1px), rgba(255,255,255,.55) calc(50% - 1px), rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 1px));
+  border-radius: 2px; }  /* [web:155] */
+
+.clu-sort::before, .clu-sort::after { content: ""; position: absolute; left: 0; right: 0; margin: auto; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; }  /* [web:155] */
+.clu-sort::before { top: 2px; border-bottom: 6px solid var(--clu-sort-idle); }  /* [web:155] */
+.clu-sort::after  { bottom: 2px; border-top: 6px solid var(--clu-sort-idle); }  /* [web:155] */
+.clu-sort.asc::before  { border-bottom-color: var(--clu-sort-active); }  /* [web:155] */
+.clu-sort.desc::after  { border-top-color: var(--clu-sort-active); }  /* [web:155] */
+

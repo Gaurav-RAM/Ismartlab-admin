@@ -1,6 +1,6 @@
 // src/pages/collectors/PendingList.jsx
 import React, { useState } from 'react';
-import CollectorListUnified from '@/components/CollectorListUnified';
+import CollectorListUnified from '../../components/CollectorListUnified';
 
 export default function CollectorPendingList() {
   // state

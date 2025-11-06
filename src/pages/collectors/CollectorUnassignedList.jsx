@@ -1,7 +1,7 @@
 // src/pages/collectors/Documents.jsx
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import CollectorListUnified from '@/components/CollectorListUnified';
+import CollectorListUnified from '../../components/CollectorListUnified';
 
 export default function CollectorDocumentList() {
   const { id } = useParams(); 
@@ -16,7 +16,6 @@ export default function CollectorDocumentList() {
     // { id: 'd2', title: 'License', type: 'License', uploadedAt: '2025-10-14', url: '/files/license.pdf' },
   ]);
 
-  // optional: client-side search; for server-side, query using `search` and `id`
   const filtered = documentRows.filter((r) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -27,7 +26,6 @@ export default function CollectorDocumentList() {
     );
   });
 
-  // client-side pagination; replace with server paging if needed
   const startIndex = (page - 1) * pageSize;
   const pageRows = filtered.slice(startIndex, startIndex + pageSize);
   const total = filtered.length;
@@ -56,6 +54,7 @@ export default function CollectorDocumentList() {
           <a className="clu-btn small outline" href={d.url} target="_blank" rel="noreferrer">View</a>
           <a className="clu-btn small" href={d.url} download>Download</a>
         </div>
+        
       )}
       search={search}
       onSearch={(v) => {
