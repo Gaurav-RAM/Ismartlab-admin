@@ -1,23 +1,12 @@
 // src/components/Sidebar.jsx
 import { useState } from 'react';
 import {
-  FiChevronRight,
-  FiChevronDown,
-  FiGrid,
-  FiCalendar,
-  FiUsers,
-  FiStar,
-  FiDollarSign,
-  FiFileText,
-  FiBell,
-  FiLifeBuoy,
-  FiChevronLeft,
-  FiList,
-  FiClock,
-  FiCircle,
-  FiCreditCard,
+  FiChevronRight, FiChevronDown, FiGrid, FiCalendar, FiUsers, FiStar, FiDollarSign,
+  FiFileText, FiBell, FiLifeBuoy, FiChevronLeft, FiList, FiClock, FiCircle, FiCreditCard,
+  FiEdit2, // NEW
 } from 'react-icons/fi';
 import { FaFlask } from 'react-icons/fa';
+import { useLocation } from 'react-router-dom'; // NEW
 
 const sections = [
   {
@@ -47,8 +36,21 @@ const sections = [
   {
     heading: 'LABORATORY MANAGEMENT',
     items: [
-      { label: 'Labs', icon: <FaFlask />, path: '/labs' },
-      { label: 'Test Case', icon: <FiFileText />, path: '/test-cases' },
+      {
+        label: 'Labs',
+        icon: <FaFlask />,
+        // make "Labs" a parent as in the design
+        children: [
+          { label: 'Labs', icon: <FiEdit2 />, path: '/labs' },                 // enabled
+          { label: 'Lab Session', icon: <FiClock />, path: '/labsession', disabled: true }, // disabled
+        ],
+      },
+      { label: 'Test Case', icon: <FiFileText />,
+          children: [
+          { label: 'TestCaseList', icon: <FiEdit2 />, path: '/testcases' },                 // enabled
+          { label: 'Packages', icon: <FiClock />, path: '/testpackage', disabled: true }, // disabled
+        ], 
+      },
       { label: 'Prescriptions', icon: <FiFileText />, path: '/prescriptions' },
     ],
   },

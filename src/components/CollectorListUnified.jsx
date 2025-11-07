@@ -1,6 +1,6 @@
 // src/components/CollectorListUnified.jsx
 import React from 'react';
-import "./styles/common.css"
+import "./styles/common.css";
 
 export default function CollectorListUnified(props) {
   const {
@@ -23,13 +23,15 @@ export default function CollectorListUnified(props) {
     rowKey,
     renderActions,
     emptyText = 'No Data Found',
-     headerSlot,           // NEW: optional custom header bar
-    renderHead,           // NEW: optional custom <tr> for table header
-    renderRow,            // NEW: optional custom <tr> per data row
+    headerSlot,            // optional custom header bar
+    renderHead,            // optional custom <tr> for table header
+    renderRow,             // optional custom <tr> per data row
     hideActionsRow = false
   } = props;
 
   const isDocs = variant === 'documents';
+  const hasHeaderSlot = typeof headerSlot === 'function';
+
   const resolvedTitle =
     title ||
     (isDocs
@@ -43,9 +45,9 @@ export default function CollectorListUnified(props) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-     <div className="clu-wrap">
+    <div className="clu-wrap">
       {/* Header */}
-      {headerSlot ? (
+      {hasHeaderSlot ? (
         <div className="clu-top">{headerSlot()}</div>
       ) : (
         <div className="clu-top">
@@ -67,8 +69,8 @@ export default function CollectorListUnified(props) {
         </div>
       )}
 
-      {/* Bulk actions row (can be hidden if headerSlot contains these controls) */}
-      {!hideActionsRow && (
+      {/* Bulk actions row (auto-hidden when a headerSlot is provided) */}
+      {!hideActionsRow && !hasHeaderSlot && (
         <div className="clu-actions">
           <select
             className="clu-select"

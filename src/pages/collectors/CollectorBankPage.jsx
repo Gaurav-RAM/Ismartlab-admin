@@ -33,6 +33,7 @@ function Toggle({ checked, onChange }) {
 
 export default function CollectorBankPage() {
     const navigate = useNavigate();
+    const bankForm =  () => { navigate("form")}
   const [search, setSearch] = useState('');
   const [action, setAction] = useState('');
   const [page, setPage] = useState(1);
@@ -79,7 +80,7 @@ export default function CollectorBankPage() {
             placeholder="search…"
           />
         </div>
-        <button className="clu-btn primary" onClick={() => navigate("/form")}>
+        <button className="clu-btn primary" onClick={bankForm}>
           + Add Bank
         </button>
       </div>

@@ -47,7 +47,6 @@ export default function DataPageWrapper({
   return (
     <Box p={2.5} component={Paper} elevation={0}>
       <Stack spacing={2.5}>
-        {/* Breadcrumbs */}
         <Breadcrumbs>
           {breadcrumbs?.map((b, i) =>
             b.to ? (
@@ -60,14 +59,12 @@ export default function DataPageWrapper({
           )}
         </Breadcrumbs>
 
-        {/* Toolbar */}
         <Stack
           direction="row"
           justifyContent="space-between"
           gap={2}
           flexWrap="wrap"
         >
-          {/* Left actions */}
           <Stack direction="row" spacing={1}>
             {bulkActions.length > 0 && (
               <>
@@ -100,7 +97,6 @@ export default function DataPageWrapper({
             </Button>
           </Stack>
 
-          {/* Search + New + Filter */}
           <Stack direction="row" spacing={1}>
             <TextField
               size="small"
@@ -134,7 +130,6 @@ export default function DataPageWrapper({
           </Stack>
         </Stack>
 
-        {/* Table */}
         <Box sx={{ height: 520, border: "1px solid #ddd", borderRadius: 1 }}>
           <DataGrid
             rows={filteredRows}

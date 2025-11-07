@@ -5,7 +5,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Appointments from "./pages/Appointments.jsx";
 import AppointmentCreatePage from "./pages/AppointmentCreatePage.jsx";
 import Collectors from "./pages/collectors/CollectorListPage.jsx";
-import Labs from "./pages/Labs.jsx";
+import Labs from "./pages/labs/CollectorLab.jsx";
 import TestCases from "./pages/TestCases.jsx";
 import Login from "./pages/Login.jsx";
 import RequireAuth from "./routes/RequireAuth.jsx";
@@ -17,6 +17,20 @@ import CollectorPendingList from "./pages/collectors/CollectorPendingList.jsx";
 import CollectorBankPage from "./pages/collectors/CollectorBankPage.jsx";
 import CollectorDocumentForm from "./pages/collectors/CollectorDocumentForm.jsx";
 import CollectorBankForm from "./pages/collectors/CollectorBankForm.jsx";
+import CollectorLab from "./pages/labs/CollectorLab.jsx";
+import CollectorLabForm from "./pages/labs/CollectorLabForm.jsx";
+import CollectorLabSessionPage
+ from "./pages/labs/CollectorLabSession.jsx";
+import CollectorLabSessionForm
+ from "./pages/labs/CollectorLabsessionForm.jsx";
+ import  CollectorTestCaseList
+ from "./pages/tescases/CollectorTestCaseList.jsx";
+import  CollectorTestCaseForm
+ from "./pages/tescases/CollectorTestCaseForm.jsx";
+ 
+
+
+
 
 
 
@@ -57,6 +71,35 @@ export default function App() {
            <Route
             path="/collectors/document/form"
             element={<CollectorDocumentForm />}
+          />
+
+           <Route
+            path="/labs"
+            element={<CollectorLab />}
+          />
+
+          <Route
+            path="/labs/form"
+            element={<CollectorLabForm />}
+          />
+          <Route
+            path="/labsession"
+            element={<CollectorLabSessionPage />}
+          />
+
+              <Route
+            path="/labsession/session"
+            element={<CollectorLabSessionForm />}
+          />
+
+            <Route
+            path="/testcases"
+            element={<CollectorTestCaseList />}
+          />
+
+           <Route
+            path="/testcases/testform"
+            element={<CollectorTestCaseForm />}
           />
 
           <Route path="/collectors" element={<Collectors />} />
