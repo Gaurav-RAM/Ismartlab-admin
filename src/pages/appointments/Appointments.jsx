@@ -26,7 +26,7 @@ import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { DataGrid } from '@mui/x-data-grid';
-import DataPageWrapper from "../components/DataPageWrapper.jsx"
+import DataPageWrapper from "../../components/DataPageWrapper.jsx"
 import { useNavigate, Outlet, Link as RouterLink } from 'react-router-dom';
 
 const rows = [

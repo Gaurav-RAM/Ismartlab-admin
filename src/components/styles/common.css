@@ -4,7 +4,7 @@
 .clu-title { margin: 0; font-size: 18px; }
 .clu-right { display: flex; gap: 10px; align-items: center; }
 .clu-search { display: flex; align-items: center; border: 1px solid #e0e6ef; border-radius: 6px; overflow: hidden; }
-.clu-search-label { padding: 8px 10px; background: #f3f6fb; color: #6b7280; font-size: 12px; }
+.clu-search-label { padding: 8px 10px; background: #f3f6fb; color: #6b7280; font-size: 10px; }
 .clu-input { border: 0; outline: 0; padding: 8px 10px; min-width: 260px; }
 .clu-actions { display: flex; gap: 10px; align-items: center; }
 .clu-select { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px; background: #fff; }

@@ -48,10 +48,15 @@ const sections = [
       { label: 'Test Case', icon: <FiFileText />,
           children: [
           { label: 'TestCaseList', icon: <FiEdit2 />, path: '/testcases' },                 // enabled
-          { label: 'Packages', icon: <FiClock />, path: '/testpackage', disabled: true }, // disabled
+          { label: 'Packages', icon: <FiClock />, path: '/testpackages', disabled: true }, // disabled
         ], 
       },
-      { label: 'Prescriptions', icon: <FiFileText />, path: '/prescriptions' },
+      { label: 'Prescriptions', icon: <FiFileText />, 
+        children: [
+          { label: 'All Prescriptions', icon: <FiEdit2 />, path: '/prescriptions'  },                 // enabled
+          { label: 'Pending Prescriptions', icon: <FiClock />, path: '/pendingpres', disabled: true }, // disabled
+        ], 
+        },
     ],
   },
   {
@@ -61,7 +66,7 @@ const sections = [
   {
     heading: 'FINANCIAL MANAGEMENT',
     items: [
-      { label: 'Payment List', icon: <FiDollarSign />, path: '/payments' },
+      { label: 'Payment List', icon: <FiDollarSign />, path: '/paymentlist' },
       { label: 'Cash Payment List', icon: <FiDollarSign />, path: '/cash-payments' },
       { label: 'Payouts', icon: <FiDollarSign />, path: '/payouts' },
       { label: 'Earnings', icon: <FiDollarSign />, path: '/earnings' },

@@ -27,7 +27,7 @@ import dayjs from "dayjs";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import {
   addDoc,
   collection,

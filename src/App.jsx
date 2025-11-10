@@ -2,8 +2,8 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AdminLayout from "./layout/AdminLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import Appointments from "./pages/Appointments.jsx";
-import AppointmentCreatePage from "./pages/AppointmentCreatePage.jsx";
+import Appointments from "./pages/appointments/Appointments.jsx";
+import AppointmentCreatePage from "./pages/appointments/AppointmentCreatePage.jsx";
 import Collectors from "./pages/collectors/CollectorListPage.jsx";
 import Labs from "./pages/labs/CollectorLab.jsx";
 import TestCases from "./pages/TestCases.jsx";
@@ -19,20 +19,19 @@ import CollectorDocumentForm from "./pages/collectors/CollectorDocumentForm.jsx"
 import CollectorBankForm from "./pages/collectors/CollectorBankForm.jsx";
 import CollectorLab from "./pages/labs/CollectorLab.jsx";
 import CollectorLabForm from "./pages/labs/CollectorLabForm.jsx";
-import CollectorLabSessionPage
- from "./pages/labs/CollectorLabSession.jsx";
-import CollectorLabSessionForm
- from "./pages/labs/CollectorLabsessionForm.jsx";
- import  CollectorTestCaseList
- from "./pages/tescases/CollectorTestCaseList.jsx";
-import  CollectorTestCaseForm
- from "./pages/tescases/CollectorTestCaseForm.jsx";
- 
+import CollectorLabSessionPage from "./pages/labs/CollectorLabSession.jsx";
+import CollectorLabSessionForm from "./pages/labs/CollectorLabsessionForm.jsx";
+import CollectorTestCaseList from "./pages/tescases/CollectorTestCaseList.jsx";
+import CollectorTestCaseForm from "./pages/tescases/CollectorTestCaseForm.jsx";
+import CollectorTestPackages from "./pages/tescases/CollectorTestPackages.jsx";
+import CollectorPackagesForm from "./pages/tescases/CollectorPackagesForm.jsx";
 
+import CollectorPrescription from "./pages/prescriptions/CollectorPrescription.jsx";
 
+import CollectorPendingPrescription from "./pages/prescriptions/CollectorPendingPrescription.jsx";
 
-
-
+import CollectorReviews from "./pages/reviews/CollectorReviews.jsx";
+import PaymentList from "./pages/FinancialManagement/PaymentList.jsx";
 
 export default function App() {
   return (
@@ -50,7 +49,7 @@ export default function App() {
             path="/collectors/unassigned"
             element={<CollectorUnassignedList />}
           />
-              <Route
+          <Route
             path="/collectors/pending"
             element={<CollectorPendingList />}
           />
@@ -58,49 +57,51 @@ export default function App() {
             path="/collectors/document"
             element={<CollectorDocumentList />}
           />
+          <Route path="/collectors/bank" element={<CollectorBankPage />} />
+
+          <Route path="/collectors/bank/form" element={<CollectorBankForm />} />
+
           <Route
-            path="/collectors/bank"
-            element={<CollectorBankPage />}
-          />
-
-           <Route
-            path="/collectors/bank/form"
-            element={<CollectorBankForm />}
-          />
-
-           <Route
             path="/collectors/document/form"
             element={<CollectorDocumentForm />}
           />
 
-           <Route
-            path="/labs"
-            element={<CollectorLab />}
-          />
+          <Route path="/labs" element={<CollectorLab />} />
+
+          <Route path="/labs/form" element={<CollectorLabForm />} />
+          <Route path="/labsession" element={<CollectorLabSessionPage />} />
 
           <Route
-            path="/labs/form"
-            element={<CollectorLabForm />}
-          />
-          <Route
-            path="/labsession"
-            element={<CollectorLabSessionPage />}
-          />
-
-              <Route
             path="/labsession/session"
             element={<CollectorLabSessionForm />}
           />
 
-            <Route
-            path="/testcases"
-            element={<CollectorTestCaseList />}
-          />
+          <Route path="/testcases" element={<CollectorTestCaseList />} />
 
-           <Route
+          <Route
             path="/testcases/testform"
             element={<CollectorTestCaseForm />}
           />
+
+          <Route path="/testpackages" element={<CollectorTestPackages />} />
+
+          <Route
+            path="/testpackages/packageform"
+            element={<CollectorPackagesForm />}
+          />
+
+          <Route path="/prescriptions" element={<CollectorPrescription />} />
+
+          <Route
+            path="/pendingpres"
+            element={<CollectorPendingPrescription />}
+          />
+           <Route
+            path="/paymentlist"
+            element={<PaymentList />}
+          />
+
+          <Route path="/reviews" element={<CollectorReviews />} />
 
           <Route path="/collectors" element={<Collectors />} />
           <Route path="/labs" element={<Labs />} />

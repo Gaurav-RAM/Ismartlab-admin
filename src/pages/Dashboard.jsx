@@ -5,13 +5,14 @@ import PieCard from '../components/PieCards.jsx';
 import "./Dashboard.css";
 
 import {
-  collection, query, where, getDocs,
+  collection, query, where, getDocs, limit,
   getCountFromServer, getAggregateFromServer, sum, Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
 import { FiUserCheck, FiUsers, FiCalendar, FiDollarSign, FiEye } from 'react-icons/fi';
 import { FaWallet, FaFlask } from 'react-icons/fa';
+import { useAppointmentsBreakdown } from '../hooks/useAppointmentsBreakdown';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -25,7 +26,27 @@ function toTs(dateStr, endOfDay = false) {
   return Timestamp.fromDate(d);
 }
 
-// Small avatar initials used in the prescriptions table
+// amount fallback across common schemas
+function pickAmount(a) {
+  const candidates = [a.amount, a.totalAmount, a.price, a.total, a.grandTotal];
+  for (const v of candidates) {
+    const n = Number(v);
+    if (!isNaN(n) && isFinite(n)) return n;
+  }
+  return 0;
+}
+
+// robust date extraction across fields + Timestamp|string support
+function getDocDate(a) {
+  const candidates = [a.createdAt, a.date, a.paidAt, a.updatedAt];
+  for (const v of candidates) {
+    if (!v) continue;
+    const d = v.toDate ? v.toDate() : new Date(v);
+    if (d instanceof Date && !isNaN(d)) return d;
+  }
+  return null;
+}
+
 function Avatar({ name }) {
   const initials = (name || '')
     .split(' ')
@@ -36,15 +57,11 @@ function Avatar({ name }) {
   return (
     <div
       style={{
-        width: 40,
-        height: 40,
-        borderRadius: 999,
+        width: 40, height: 40, borderRadius: 999,
         background: 'var(--primary-50, #eef2ff)',
         color: 'var(--primary-700, #4338ca)',
-        display: 'grid',
-        placeItems: 'center',
-        fontWeight: 700,
-        border: '1px solid var(--border, #e5e7eb)',
+        display: 'grid', placeItems: 'center',
+        fontWeight: 700, border: '1px solid var(--border, #e5e7eb)',
       }}
     >
       {initials || '?'}
@@ -57,26 +74,12 @@ function BarChartCard({ title, data, yPrefix = '$' }) {
   return (
     <div className="card">
       <div className="chart-title">{title}</div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: 16,
-          height: 260,
-          padding: '16px 8px 0 8px',
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 260, padding: '16px 8px 0 8px' }}>
         {data.map((d) => {
           const h = (d.value / max) * 210 + 4;
           return (
-            <div
-              key={d.label}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 28 }}
-            >
-              <div
-                title={`${d.label}: ${yPrefix}${d.value}`}
-                style={{ width: 24, height: h, background: 'var(--primary-600)', borderRadius: 6 }}
-              />
+            <div key={d.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 28 }}>
+              <div title={`${d.label}: ${yPrefix}${d.value}`} style={{ width: 24, height: h, background: 'var(--primary-600)', borderRadius: 6 }} />
               <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>{d.label}</div>
             </div>
           );
@@ -98,17 +101,17 @@ export default function Dashboard() {
     revenue: 0,
   });
 
-  const [pie, setPie] = useState([
-    { name: 'Test', value: 0 },
-    { name: 'Packages', value: 0 },
-  ]);
-
   const [revenueSeries, setRevenueSeries] = useState(MONTHS.map((m) => ({ label: m, value: 0 })));
   const [appointments, setAppointments] = useState([]);
-
-  // NEW: dashboard cards data
   const [pendingCollectors, setPendingCollectors] = useState([]);
   const [pendingPrescriptions, setPendingPrescriptions] = useState([]);
+
+  const defaultPie = useMemo(() => ([
+    { name: 'Test', value: 0 },
+    { name: 'Packages', value: 0 },
+  ]), []);
+
+  const { data: pie = defaultPie } = useAppointmentsBreakdown(db, range) || {};
 
   const stats = useMemo(() => ([
     { label: 'Total Pending Payout', value: fmtCurrency(137), icon: <FaWallet /> },
@@ -122,98 +125,144 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
 
-    const run = async () => {
-      const startTs = toTs(range.start, false);
-      const endTs = toTs(range.end, true);
-
-      const filters = [];
-      if (startTs) filters.push(where('createdAt', '>=', startTs));
-      if (endTs) filters.push(where('createdAt', '<=', endTs));
-
-      const apptCol = collection(db, 'appointments');
-      const apptQuery = query(apptCol, ...filters);
-
-      const allTimeSnap = await getCountFromServer(apptCol);
-      const allTimeCount = allTimeSnap.data().count || 0;
-      if (!cancelled) {
-        setTotals(prev => ({ ...prev, allAppointments: allTimeCount }));
-      }
-
+    const safeCount = async (thunk) => {
       try {
-        const [testsSnap, packagesSnap] = await Promise.all([
-          getCountFromServer(query(apptCol, ...filters, where('type', '==', 'test'))),
-          getCountFromServer(query(apptCol, ...filters, where('type', '==', 'package'))),
-        ]);
-
-        const revAgg = await getAggregateFromServer(apptQuery, { totalRevenue: sum('amount') });
-        const revenue = Number(revAgg.data().totalRevenue || 0);
-
-        const docsSnap = await getDocs(apptQuery);
-        const items = docsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-        const monthly = MONTHS.map((m) => ({ label: m, value: 0 }));
-        for (const a of items) {
-          const dt = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-          const m = dt instanceof Date && !isNaN(dt) ? dt.getMonth() : 0;
-          monthly[m].value += Number(a.amount || 0);
-        }
-
-        const customersCount = (await getCountFromServer(collection(db, 'customers'))).data().count || 0;
-        const labsCount = (await getCountFromServer(collection(db, 'labs'))).data().count || 0;
-        const collectorsCount = (
-          await getCountFromServer(query(collection(db, 'collectors'), where('status', '==', 'active')))
-        ).data().count || 0;
-
-        // NEW: fetch pending collectors (status == 'pending')
-        const pendingCollectorsSnap = await getDocs(
-          query(collection(db, 'collectors'), where('status', '==', 'pending'))
-        );
-        const pendingCollectorsRows = pendingCollectorsSnap.docs.map(d => {
-          const data = d.data() || {};
-          const name = data.name || [data.firstName, data.lastName].filter(Boolean).join(' ') || d.id;
-          return { id: d.id, name };
-        });
-
-        // NEW: fetch prescriptions pending review
-        const pendingPrescriptionsSnap = await getDocs(
-          query(collection(db, 'prescriptions'), where('status', '==', 'pending_review'))
-        );
-        const pendingPrescriptionsRows = pendingPrescriptionsSnap.docs.map(d => {
-          const p = d.data() || {};
-          const when = p.date?.toDate ? p.date.toDate() : (p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.date || p.createdAt));
-          return {
-            id: d.id,
-            name: p.customerName || p.name || 'Unknown',
-            email: p.customerEmail || p.email || '',
-            date: when instanceof Date && !isNaN(when) ? when.toISOString().slice(0, 10) : '',
-          };
-        });
-
-        if (cancelled) return;
-
-        setTotals(prev => ({
-          ...prev,
-          activeCollectors: collectorsCount,
-          labs: labsCount,
-          customers: customersCount,
-          revenue,
-        }));
-
-        setPie([
-          { name: 'Test', value: testsSnap.data().count || 0 },
-          { name: 'Packages', value: packagesSnap.data().count || 0 },
-        ]);
-
-        setRevenueSeries(monthly);
-        setAppointments(items);
-        setPendingCollectors(pendingCollectorsRows);
-        setPendingPrescriptions(pendingPrescriptionsRows);
-      } catch (err) {
-        console.error('Dashboard load error:', err);
+        const snap = await thunk();
+        return snap?.data?.().count || 0;
+      } catch (e) {
+        console.warn('Count failed:', e);
+        return 0;
       }
     };
 
-    run().catch(console.error);
+    const run = async () => {
+      // Appointments base
+      const apptCol = collection(db, 'appointments');
+
+      // 0) All-time appointments (safe)
+      const allTime = await safeCount(() => getCountFromServer(apptCol));
+      if (!cancelled) setTotals(prev => ({ ...prev, allAppointments: allTime }));
+
+      // 1) Selected-range docs for fallback
+      const startTs = toTs(range.start, false);
+      const endTs = toTs(range.end, true);
+      const filters = [];
+      if (startTs) filters.push(where('createdAt', '>=', startTs));
+      if (endTs) filters.push(where('createdAt', '<=', endTs));
+      const apptQuery = query(apptCol, ...filters);
+
+      let items = [];
+      try {
+        const docsSnap = await getDocs(apptQuery);
+        items = docsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn('Appointments query failed:', e);
+      }
+      if (!cancelled) setAppointments(items);
+
+      // 2) Revenue aggregation with local fallback
+      let revenue = items.reduce((acc, a) => acc + pickAmount(a), 0);
+      try {
+        const revAgg = await getAggregateFromServer(apptQuery, { totalRevenue: sum('amount') });
+        const aggVal = Number(revAgg.data().totalRevenue || 0);
+        if (aggVal > 0) revenue = aggVal;
+      } catch (e) {
+        console.warn('Revenue aggregation failed, using fallback:', e);
+      }
+
+      // 3) Monthly trend (guarded)
+      let monthly = MONTHS.map((m) => ({ label: m, value: 0 }));
+      try {
+        const now = new Date();
+        const yStart = Timestamp.fromDate(new Date(now.getFullYear(), 0, 1));
+        const yEnd = Timestamp.fromDate(new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999));
+        const yearQ = query(apptCol, where('createdAt', '>=', yStart), where('createdAt', '<=', yEnd));
+        const yearSnap = await getDocs(yearQ);
+        const yearItems = yearSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const tmp = MONTHS.map((m) => ({ label: m, value: 0 }));
+        for (const a of yearItems) {
+          const dt = getDocDate(a) || new Date(now.getFullYear(), 0, 1);
+          const val = pickAmount(a);
+          tmp[dt.getMonth()].value += val;
+        }
+        monthly = tmp;
+      } catch (e) {
+        console.warn('Monthly trend failed:', e);
+      }
+
+      // 4) Other counts in parallel, with schema-aligned fallbacks
+      const [
+        usersCustomersRes,
+        customersColRes,
+        labsRes,
+        collectorsStatusActiveRes,
+        collectorsIsActiveRes,
+        collectorsStatusRes,
+        pendingCollectorsRes,
+        pendingPrescriptionsRes,
+      ] = await Promise.allSettled([
+        getCountFromServer(query(collection(db, 'users'), where('role', '==', 'customer'))),
+        getCountFromServer(collection(db, 'customers')),
+        getCountFromServer(collection(db, 'labs')),
+        getCountFromServer(query(collection(db, 'collectors'), where('statusActive', '==', true))),
+        getCountFromServer(query(collection(db, 'collectors'), where('isActive', '==', true))),
+        getCountFromServer(query(collection(db, 'collectors'), where('status', '==', 'active'))),
+        getDocs(query(collection(db, 'collectors'), where('status', '==', 'pending'))),
+        getDocs(query(collection(db, 'prescriptions'), where('status', '==', 'pending_review'))),
+      ]);
+
+      const pickSettledCount = (r) => (r.status === 'fulfilled' ? (r.value?.data?.().count || 0) : 0);
+
+      const customersFromUsers = pickSettledCount(usersCustomersRes);
+      const customersFromCollection = pickSettledCount(customersColRes);
+      const customersCount = customersFromUsers || customersFromCollection;
+
+      const labsCount = pickSettledCount(labsRes);
+
+      const activeFromStatusActive = pickSettledCount(collectorsStatusActiveRes);
+      const activeFromIsActive = pickSettledCount(collectorsIsActiveRes);
+      const activeFromStatus = pickSettledCount(collectorsStatusRes);
+      const collectorsCount = activeFromStatusActive || activeFromIsActive || activeFromStatus;
+
+      const pendingCollectorsRows =
+        pendingCollectorsRes.status === 'fulfilled'
+          ? pendingCollectorsRes.value.docs.map(d => {
+              const data = d.data() || {};
+              const name = data.name || [data.firstName, data.lastName].filter(Boolean).join(' ') || d.id;
+              return { id: d.id, name };
+            })
+          : [];
+
+      const pendingPrescriptionsRows =
+        pendingPrescriptionsRes.status === 'fulfilled'
+          ? pendingPrescriptionsRes.value.docs.map(d => {
+              const p = d.data() || {};
+              const when = p.date?.toDate ? p.date.toDate()
+                : (p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.date || p.createdAt));
+              return {
+                id: d.id,
+                name: p.customerName || p.name || 'Unknown',
+                email: p.customerEmail || p.email || '',
+                date: when instanceof Date && !isNaN(when) ? when.toISOString().slice(0, 10) : '',
+              };
+            })
+          : [];
+
+      if (cancelled) return;
+
+      setTotals(prev => ({
+        ...prev,
+        activeCollectors: collectorsCount,
+        labs: labsCount,
+        customers: customersCount,
+        revenue,
+      }));
+      setRevenueSeries(monthly);
+      setPendingCollectors(pendingCollectorsRows);
+      setPendingPrescriptions(pendingPrescriptionsRows);
+    };
+
+    run().catch((e) => console.error('Dashboard load error:', e));
     return () => { cancelled = true; };
   }, [range]);
 
@@ -266,7 +315,7 @@ export default function Dashboard() {
         </div>
 
         <div className="cols-4">
-          <div style={{ height: '100%', minHeight: 330 }}>
+          <div style={{ height: 330 }}>
             <PieCard title="Proportion Of Appointments: Tests Vs Packages" data={pie} />
           </div>
         </div>
@@ -278,9 +327,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* NEW: Two cards row */}
+      {/* Pending rows */}
       <div className="grid" style={{ marginTop: 18 }}>
-        {/* Pending Collector Approval */}
         <div className="cols-6">
           <div className="card">
             <h3 className="chart-title">Pending Collector Approval</h3>
@@ -317,7 +365,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Pending Review Prescriptions */}
         <div className="cols-6">
           <div className="card">
             <h3 className="chart-title">Pending Review Prescriptions</h3>
