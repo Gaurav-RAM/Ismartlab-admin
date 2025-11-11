@@ -32,6 +32,12 @@ import CollectorPendingPrescription from "./pages/prescriptions/CollectorPending
 
 import CollectorReviews from "./pages/reviews/CollectorReviews.jsx";
 import PaymentList from "./pages/FinancialManagement/PaymentList.jsx";
+import Payouts from "./pages/FinancialManagement/Payouts.jsx";
+import CashPaymentList from "./pages/FinancialManagement/CashPaymentList.jsx";
+import Coupans from "./pages/FinancialManagement/Coupans.jsx";
+import TopBookTestCase from "./pages/report/TopBookTestCase.jsx";
+
+
 
 export default function App() {
   return (
@@ -65,6 +71,13 @@ export default function App() {
             path="/collectors/document/form"
             element={<CollectorDocumentForm />}
           />
+
+            <Route
+            path="/topbook"
+            element={<TopBookTestCase />}
+          />
+
+          
 
           <Route path="/labs" element={<CollectorLab />} />
 
@@ -100,6 +113,24 @@ export default function App() {
             path="/paymentlist"
             element={<PaymentList />}
           />
+
+
+           <Route
+            path="/cashpaymentlist"
+            element={<CashPaymentList />}
+          />
+
+           <Route
+            path="/payouts"
+            element={<Payouts />}
+          />
+
+           <Route
+            path="/coupans"
+            element={<Coupans />}
+          />
+
+          
 
           <Route path="/reviews" element={<CollectorReviews />} />
 

@@ -13,18 +13,18 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
-import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import AddIcon from '@mui/icons-material/Add';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 import { Link as RouterLink } from 'react-router-dom';
 
 // helper to read nested props like "collector.name"
 const getByPath = (obj, path) => path.split('.').reduce((a, k) => (a ? a[k] : undefined), obj);
+
+// tiny formatters for display
+const fmtPct = (n) => (n == null ? '' : `${Number(n).toFixed(1)}%`);
+const fmtDate = (iso) =>
+  iso ? new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
 function SortHeader({ label, path, sortBy, sortDir, onChange }) {
   const next = () => {
@@ -41,36 +41,38 @@ function SortHeader({ label, path, sortBy, sortDir, onChange }) {
   );
 }
 
-export default function CollectorTestCaseList() {
+export default function TopBookTestCase() {
   const navigate = useNavigate();
 
   // local UI state for header controls
-  const [action, setAction] = useState('');
   const [query, setQuery] = useState('');
-  const [quickFilter, setQuickFilter] = useState('');
 
+  // Sample data aligned to table headers
+  // Replace with API results that expose these fields for seamless rendering
   const [labs] = useState([
-    { id: 'l1', name: 'CollectorLab A', test_count: 12, booking_count: 5, collector_count: 3, status: 'Active' },
-    { id: 'l2', name: 'CollectorLab B', test_count: 7,  booking_count: 2, collector_count: 1, status: 'Inactive' },
+    {
+      id: 't1',
+      testCase: 'Complete Blood Count',
+      testCategory: 'Hematology',
+      bookingCount: 128,
+      bookingPercentage: 24.6,
+      lastBookingDate: '2025-11-09',
+    },
+    {
+      id: 't2',
+      testCase: 'Lipid Profile',
+      testCategory: 'Biochemistry',
+      bookingCount: 93,
+      bookingPercentage: 17.9,
+      lastBookingDate: '2025-11-10',
+    },
   ]);
 
-  const bulkActions = [
-    { value: 'enable', label: 'Enable' },
-    { value: 'disable', label: 'Disable' },
-  ];
-  const filterOptions = [
-    { value: '', label: 'All' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-  ];
   const breadcrumbs = [
     { label: 'Dashboard', to: '/' },
-    { label: 'Collector List' },
+    { label: 'Top Booked Test Case' },
   ];
 
-  const handleApply = () => {
-    // No selection column anymore; implement bulk action via filters or remove this button
-  };
   const handleExport = () => {
     // TODO: export current rows/filter
   };
@@ -93,48 +95,21 @@ export default function CollectorTestCaseList() {
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <Select
-              style={{ width: "90px" }}
-              displayEmpty
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
-              renderValue={(val) => val ? (bulkActions.find(a => a.value === val)?.label ?? '') : 'No action'}
-              aria-label="Bulk action"
-            >
-              <MenuItem value=""><em>No action</em></MenuItem>
-              {bulkActions.map((a) => (
-                <MenuItem key={a.value} value={a.value}>{a.label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Button variant="contained" size="small" disabled={!action} onClick={handleApply}>
-            Apply
-          </Button>
-
-          <Button startIcon={<DownloadRoundedIcon />} variant="contained" color="error" size="small" onClick={handleExport}>
+          <Button
+            style={{ height: '40px' }}
+            startIcon={<DownloadRoundedIcon />}
+            variant="contained"
+            color="error"
+            size="small"
+            onClick={handleExport}
+          >
             Export
           </Button>
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FormControl size="small" sx={{ minWidth: 73 }}>
-            <Select
-              displayEmpty
-              value={quickFilter}
-              onChange={(e) => setQuickFilter(e.target.value)}
-              renderValue={(val) => (!val ? 'All' : (filterOptions.find(f => f.value === val)?.label ?? 'All'))}
-              aria-label="Quick filter"
-            >
-              <MenuItem value=""><em>All</em></MenuItem>
-              {filterOptions.map((f) => (
-                <MenuItem key={f.value} value={f.value}>{f.label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
           <TextField
+            style={{ height: '40px' }}
             size="small"
             placeholder="search..."
             value={query}
@@ -149,32 +124,35 @@ export default function CollectorTestCaseList() {
             sx={{ minWidth: 320 }}
             aria-label="Search"
           />
-
-          <Button onClick={() => { navigate("testform"); }} startIcon={<AddIcon />} variant="contained" size="small">
-            New
-          </Button>
-
-          <Button startIcon={<FilterListIcon />} variant="contained" color="error" size="small" onClick={() => {}}>
-            Advanced Filter
-          </Button>
         </Box>
       </Box>
     </Box>
   );
 
-  // rows for table
+  // rows for table mapped 1:1 with headers
   const baseRows = useMemo(
     () =>
-      labs.map(l => ({
+      labs.map((l) => ({
         id: l.id,
-        name: l.name,
-        testCaseCounter: l.test_count,
-        bookings: l.booking_count,
-        collectors: l.collector_count,
-        status: l.status,
+        testCase: l.testCase,
+        testCategory: l.testCategory,
+        bookingCount: l.bookingCount,
+        bookingPercentage: l.bookingPercentage,
+        lastBookingDate: l.lastBookingDate,
       })),
     [labs]
   );
+
+  // client-side filtering on testCase/testCategory text
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return baseRows;
+    return baseRows.filter(
+      (r) =>
+        r.testCase.toLowerCase().includes(q) ||
+        (r.testCategory || '').toLowerCase().includes(q)
+    );
+  }, [baseRows, query]);
 
   // sorting state
   const [sortBy, setSortBy] = useState(null);
@@ -186,8 +164,8 @@ export default function CollectorTestCaseList() {
 
   // apply sorting
   const rows = useMemo(() => {
-    if (!sortBy || !sortDir) return baseRows.slice();
-    const copy = baseRows.slice();
+    if (!sortBy || !sortDir) return filtered.slice();
+    const copy = filtered.slice();
     copy.sort((a, b) => {
       const av = getByPath(a, sortBy);
       const bv = getByPath(b, sortBy);
@@ -198,7 +176,7 @@ export default function CollectorTestCaseList() {
       return 0;
     });
     return copy;
-  }, [baseRows, sortBy, sortDir]);
+  }, [filtered, sortBy, sortDir]);
 
   const onView = (row) => {
     console.log('view', row);
@@ -207,25 +185,37 @@ export default function CollectorTestCaseList() {
     console.log('delete', row);
   };
 
-  // table head WITHOUT checkbox column
+  // table head aligned to data keys
   const renderHead = () => (
     <tr>
       <th className="clu-th">
-        <SortHeader label="Collector" path="name" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader label="Test Case" path="testCase" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
       <th className="clu-th">
-        <SortHeader label="Lab" path="testCaseCounter" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader label="Test Category" path="testCategory" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
       <th className="clu-th">
-        <SortHeader label="Contact Number" path="bookings" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader label="Booking Counts" path="bookingCount" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
       <th className="clu-th">
-        <SortHeader label="Current Status" path="collectors" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader
+          label="Booking Percentage"
+          path="bookingPercentage"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
       </th>
       <th className="clu-th">
-        <SortHeader label="Status" path="status" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader
+          label="Last Booking Date"
+          path="lastBookingDate"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
       </th>
-      <th>Action</th>
+      <th className="clu-th">{/* actions column header, optional */}</th>
     </tr>
   );
 
@@ -246,27 +236,12 @@ export default function CollectorTestCaseList() {
       renderHead={renderHead}
       renderRow={(r) => (
         <tr key={r.id}>
-          {/* row WITHOUT checkbox cell */}
-          <td>{r.name}</td>
-          <td>{r.testCaseCounter}</td>
-          <td>{r.bookings}</td>
-          <td>{r.collectors}</td>
-          <td>{r.status}</td>
-          <td>
-            <Stack direction="row" spacing={0.5}>
-              <Tooltip title="View">
-                <IconButton size="small" color="primary" aria-label="view" onClick={() => onView(r)}>
-                  <EditOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton size="small" color="error" aria-label="delete" onClick={() => onDelete(r)}>
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Stack>
-          </td>
-        </tr>
+          <td>{r.testCase}</td>
+          <td>{r.testCategory}</td>
+          <td>{r.bookingCount}</td>
+          <td>{fmtPct(r.bookingPercentage)}</td>
+          <td>{fmtDate(r.lastBookingDate)}</td>
+                 </tr>
       )}
     />
   );

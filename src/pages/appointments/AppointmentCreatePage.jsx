@@ -183,7 +183,6 @@ export default function AppointmentCreatePage({ onCreate }) {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Container maxWidth="xl" sx={{ py: 2 }}>
-        {/* Header with actions */}
         <Stack
           direction="row"
           alignItems="center"

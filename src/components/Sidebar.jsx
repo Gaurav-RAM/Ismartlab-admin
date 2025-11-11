@@ -4,9 +4,9 @@ import {
   FiChevronRight, FiChevronDown, FiGrid, FiCalendar, FiUsers, FiStar, FiDollarSign,
   FiFileText, FiBell, FiLifeBuoy, FiChevronLeft, FiList, FiClock, FiCircle, FiCreditCard,
   FiEdit2, // NEW
+  FiTrendingUp
 } from 'react-icons/fi';
 import { FaFlask } from 'react-icons/fa';
-import { useLocation } from 'react-router-dom'; // NEW
 
 const sections = [
   {
@@ -67,15 +67,27 @@ const sections = [
     heading: 'FINANCIAL MANAGEMENT',
     items: [
       { label: 'Payment List', icon: <FiDollarSign />, path: '/paymentlist' },
-      { label: 'Cash Payment List', icon: <FiDollarSign />, path: '/cash-payments' },
-      { label: 'Payouts', icon: <FiDollarSign />, path: '/payouts' },
-      { label: 'Earnings', icon: <FiDollarSign />, path: '/earnings' },
-      { label: 'Coupons', icon: <FiFileText />, path: '/coupons' },
+      { label: 'Cash Payment List', icon: <FiDollarSign />, path: '/cashpaymentlist' },
+      { label: 'Payouts', icon: <FiDollarSign />, 
+         children: [
+          { label: 'Collector Payout', icon: <FiCreditCard  />, path: '/payouts'  },                 // enabled
+        ], 
+         },
+      { label: 'Earnings', icon: <FiDollarSign />,
+          children: [
+          { label: 'Collector Earnings', icon: <FiDollarSign  />, path: '/earnings'  },                 // enabled
+        ], 
+      },
+      { label: 'Coupons', icon: <FiFileText />, path: '/coupans' },
     ],
   },
   {
     heading: 'FINANCIAL MANAGEMENT',
-    items: [{ label: 'Reports', icon: <FiFileText />, path: '/reports' }],
+    items: [{ label: 'Reports', icon: <FiFileText />,
+      children: [
+          { label: 'Top Booked Test Case', icon: <FiTrendingUp  />, path: '/topbook'},                 // enabled
+        ], 
+      }],
   },
   {
     heading: 'HELPDESK MANAGEMENT',

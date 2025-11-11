@@ -1,252 +1,362 @@
-// src/pages/collectors/DocumentsCollectorList.jsx
-import React, { useMemo, useState } from 'react';
-import { useParams,useNavigate } from 'react-router-dom';
+// src/pages/labs/CollectorLab.jsx
+import React, { useState, useMemo } from 'react';
 import CollectorListUnified from '../../components/CollectorListUnified';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
+import IconButton from '@mui/material/IconButton';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import {useNavigate } from 'react-router-dom';
+
+
 
 // helper to read nested props like "collector.name"
 const getByPath = (obj, path) => path.split('.').reduce((a, k) => (a ? a[k] : undefined), obj);
+import Breadcrumbs from '@mui/material/Breadcrumbs';
+import Link from '@mui/material/Link';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import FormControl from '@mui/material/FormControl';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import AddIcon from '@mui/icons-material/Add';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import SearchIcon from '@mui/icons-material/Search';
+import { Link as RouterLink } from 'react-router-dom';
 
-// right-pinned sort header with design icon
+
+
+
+// sort header with toggle
 function SortHeader({ label, path, sortBy, sortDir, onChange }) {
-  const next = () => {
-    if (sortBy !== path) return onChange(path, 'asc');
-    if (sortDir === 'asc') return onChange(path, 'desc');
-    return onChange(null, null);
-  };
-  const iconCls = sortBy === path ? (sortDir === 'asc' ? 'clu-sort asc' : 'clu-sort desc') : 'clu-sort';
-  return (
-    <button className="clu-thbtn" onClick={next} aria-label={`Sort by ${label}`}>
-      <span>{label}</span>
-      <span className={iconCls} aria-hidden="true" />
-    </button>
-  );
-}
-
-// small accessible toggle using a checkbox
-function Toggle({ checked, onChange }) {
-  return (
-    <label className="clu-switch" aria-label="toggle">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="clu-slider" />
-    </label>
-  );
+  const next = () => {
+    if (sortBy !== path) return onChange(path, 'asc');
+    if (sortDir === 'asc') return onChange(path, 'desc');
+    return onChange(null, null);
+  };
+  const iconCls = sortBy === path ? (sortDir === 'asc' ? 'clu-sort asc' : 'clu-sort desc') : 'clu-sort';
+  return (
+    <button className="clu-thbtn" onClick={next} aria-label={`Sort by ${label}`}>
+      <span>{label}</span>
+      <span className={iconCls} aria-hidden="true" />
+    </button>
+  );
 }
 
 
- 
-    // If /appointments has a nested child route path="new", use relative navigation:
- 
-  
+export default function CollectorTestCaseList() { const navigate = useNavigate();
+  // local UI state for header controls
+const [action, setAction] = useState('');
+const [query, setQuery] = useState('');
+const [quickFilter, setQuickFilter] = useState('');
+  const [labs] = useState([
+    { id: 'l1', name: 'CollectorLab A', test_count: 12, booking_count: 5, collector_count: 3, status: 'Active' },
+    { id: 'l2', name: 'CollectorLab B', test_count: 7,  booking_count: 2, collector_count: 1, status: 'Inactive' },
+  ]);
 
-export default function DocumentsCollectorList() {
-  const { id } = useParams();
-  const navigate = useNavigate(); 
-    const onformdata =  () => { navigate("form")}
-  // local state
-  const [search, setSearch] = useState('');
-  const [action, setAction] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState(null);
-  const [sortDir, setSortDir] = useState(null);
 
-  // data (swap with API)
-  const [rows, setRows] = useState([
-    // {
-    //   id:'1',
-    //   collector:{ name:'Felix Harris', email:'collector@gmail.com', avatar:'/img/felix.png' },
-    //   document:'Government-issued ID Proof (Passport, Driver’s License, etc)',
-    //   isVerified:true,
-    //   isActive:true,
-    //   uploadedAt:'2025-10-12'
-    // },
-  ]);
+  
+// optional data for dropdowns/breadcrumbs
+const bulkActions = [
+  { value: 'enable', label: 'Enable' },
+  { value: 'disable', label: 'Disable' },
+];
+const filterOptions = [
+  { value: '', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+];
+const breadcrumbs = [
+  { label: 'Dashboard', to: '/' },
+  { label: 'Collector List' },
+];
 
-  // selection for bulk actions
-  const [selected, setSelected] = useState(() => new Set());
 
-  // search filter
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) =>
-      (r.collector?.name || '').toLowerCase().includes(q) ||
-      (r.collector?.email || '').toLowerCase().includes(q) ||
-      (r.document || '').toLowerCase().includes(q)
-    );
-  }, [rows, search]);
+// handlers
+const handleApply = () => {
+  // TODO: apply bulk action with `action` and your `selectedIds`
+};
+const handleExport = () => {
+  // TODO: export current rows/filter
+};
 
-  // sort
-  const sorted = useMemo(() => {
-    if (!sortBy || !sortDir) return filtered;
-    const arr = [...filtered];
-    arr.sort((a, b) => {
-      const va = getByPath(a, sortBy);
-      const vb = getByPath(b, sortBy);
-      // booleans and dates handled first
-      if (typeof va === 'boolean' && typeof vb === 'boolean') {
-        const res = va === vb ? 0 : va ? 1 : -1;
-        return sortDir === 'asc' ? res : -res;
-      }
-      if (!Number.isNaN(Date.parse(va)) && !Number.isNaN(Date.parse(vb))) {
-        const res = new Date(va) - new Date(vb);
-        return sortDir === 'asc' ? res : -res;
-      }
-      const res = String(va ?? '').localeCompare(String(vb ?? ''), undefined, { sensitivity: 'base' });
-      return sortDir === 'asc' ? res : -res;
-    });
-    return arr;
-  }, [filtered, sortBy, sortDir]);
 
-  // paging
-  const start = (page - 1) * pageSize;
-  const pageRows = sorted.slice(start, start + pageSize);
-  const total = sorted.length;
+// headerSlot function
+const renderLabHeader = () => (
+  <Box sx={{ width: '100%' }}>
+    {/* Breadcrumbs */}
+    <Box sx={{ mb: 2.5 }}>
+      <Breadcrumbs aria-label="breadcrumb">
+        {breadcrumbs.map((b, i) =>
+          b.to ? (
+            <Link key={i} component={RouterLink} underline="hover" to={b.to}>
+              {b.label}
+            </Link>
+          ) : (
+            <Typography key={i}>{b.label}</Typography>
+          )
+        )}
+      </Breadcrumbs>
+    </Box>
 
-  // select all on page
-  const allOnPageSelected = pageRows.length > 0 && pageRows.every((r) => selected.has(r.id));
-  const toggleAllOnPage = (v) => {
-    const next = new Set(selected);
-    pageRows.forEach((r) => (v ? next.add(r.id) : next.delete(r.id)));
-    setSelected(next);
-  };
 
-  // bulk Apply
-  const handleApply = () => {
-    console.log('Bulk action:', action, Array.from(selected));
-    setAction('');
-  };
+    {/* Toolbar: left cluster + right cluster */}
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 2,
+      }}
+    >
+      {/* Left cluster: No action + Apply + Export */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <FormControl size="small" sx={{ minWidth: 100 }}>
+          <Select
+          style={{width:"90px"}}
+            displayEmpty
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
+            renderValue={(val) =>
+              val ? (bulkActions.find(a => a.value === val)?.label ?? '') : 'No action'
+            }
+            aria-label="Bulk action"
+          >
+            <MenuItem value="">
+              <em>No action</em>
+            </MenuItem>
+            {bulkActions.map((a) => (
+              <MenuItem key={a.value} value={a.value}>
+                {a.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-  // header slot (left actions + right search and New)
-  const headerSlot = () => (
-    <>
-      <div className="clu-leftbar">
-        <select className="clu-select" value={action} onChange={(e) => setAction(e.target.value)}>
-          <option value="">No action</option>
-          <option value="verify">Mark Verified</option>
-          <option value="unverify">Mark Unverified</option>
-          <option value="activate">Activate</option>
-          <option value="deactivate">Deactivate</option>
-          <option value="delete">Delete</option>
-        </select>
-        <button className="clu-btn" disabled={!action} onClick={handleApply}>Apply</button>
-        <button className="clu-btn danger" onClick={() => console.log('Export csv')}>Export</button>
-      </div>
-      <div className="clu-right">
-        <div className="clu-search">
-          <span className="clu-search-label">search…</span>
-          <input
-            className="clu-input"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="search…"
-          />
-        </div>
-        <button onClick={onformdata} className="clu-btn">+ New</button>
-      </div>
-    </>
-  );
 
-  const onSortChange = (key, dir) => {
-    setSortBy(key);
-    setSortDir(dir);
-    setPage(1);
-  };
+        <Button variant="contained" size="small" disabled={!action} onClick={handleApply}>
+          Apply
+        </Button>
 
-  const renderHead = () => (
-    <tr>
-      <th style={{ width: 40 }}>
-        <input type="checkbox" checked={allOnPageSelected} onChange={(e) => toggleAllOnPage(e.target.checked)} />
-      </th>
-      <th className="clu-th">
-        <SortHeader label="Collector" path="collector.name" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
-      </th>
-      <th className="clu-th">
-        <SortHeader label="Document" path="document" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
-      </th>
-      <th className="clu-th">
-        <SortHeader label="Is Verified" path="isVerified" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
-      </th>
-      <th className="clu-th">
-        <SortHeader label="Status" path="isActive" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
-      </th>
 
-       <th>Action</th>
-      {/* <th className="clu-th">
-        <SortHeader label="Action" path="uploadedAt" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
-      </th> */}
-    </tr>
-  );
+        <Button
+          startIcon={<DownloadRoundedIcon />}
+          variant="contained"
+          color="error"
+          size="small"
+          onClick={handleExport}
+        >
+          Export
+        </Button>
+      </Box>
 
-  // row with toggles and action buttons
-  const renderRow = (r, i) => (
-    <tr key={r.id ?? i}>
-      <td>
-        <input
-          type="checkbox"
-          checked={selected.has(r.id)}
-          onChange={(e) => {
-            const next = new Set(selected);
-            e.target.checked ? next.add(r.id) : next.delete(r.id);
-            setSelected(next);
-          }}
-        />
-      </td>
-      <td>
-        <div className="clu-user">
-          {r.collector?.avatar ? <img className="clu-avatar" src={r.collector.avatar} alt="" /> : <div className="clu-avatar fallback" />}
-          <div className="clu-user-meta">
-            <div className="clu-user-name">{r.collector?.name}</div>
-            <div className="clu-user-email">{r.collector?.email}</div>
-          </div>
-        </div>
-      </td>
-      <td>{r.document}</td>
-      <td>
-        <Toggle
-          checked={!!r.isVerified}
-          onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, isVerified: v } : x)))}
-        />
-      </td>
-      <td>
-        <Toggle
-          checked={!!r.isActive}
-          onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, isActive: v } : x)))}
-        />
-      </td>
-      <td>
-        <div className="clu-btn-group">
-          <button className="clu-btn small outline" onClick={() => console.log('Edit', r.id)}>✏️</button>
-          <button className="clu-btn small" onClick={() => console.log('Approve/Verify', r.id)}>✅</button>
-          <button className="clu-btn small danger" onClick={() => console.log('Delete', r.id)}>🗑️</button>
-        </div>
-      </td>
-    </tr>
-  );
 
-  return (
-    <CollectorListUnified
-      variant="documents"
-      title={id ? `Collector Document List` : 'Collector Document List'}
-      rows={pageRows}
-      headerSlot={headerSlot}
-      renderHead={renderHead}
-      renderRow={renderRow}
-      hideActionsRow={true}
-      page={page}
-      pageSize={pageSize}
-      total={total}
-      onPageChange={setPage}
-      onPageSizeChange={(s) => { setPage(1); setPageSize(s); }}
-      // keep the following props for compatibility (but not used in headerSlot mode)
-      search={search}
-      onSearch={setSearch}
-      bulkActions={[]}
-      selectedAction=""
-      onActionChange={() => {}}
-      onApply={() => {}}
-      onExport={() => {}}
-      onOpenAdvancedFilter={() => {}}
-    />
-  );
+      {/* Right cluster: All filter + search + New + Advanced Filter */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <FormControl size="small" sx={{ minWidth: 73 }}>
+          <Select
+            displayEmpty
+            value={quickFilter}
+            onChange={(e) => setQuickFilter(e.target.value)}
+            renderValue={(val) => {
+              if (!val) return 'All';
+              return filterOptions.find(f => f.value === val)?.label ?? 'All';
+            }}
+            aria-label="Quick filter"
+          >
+            <MenuItem value="">
+              <em>All</em>
+            </MenuItem>
+            {filterOptions.map((f) => (
+              <MenuItem key={f.value} value={f.value}>
+                {f.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+
+        <TextField
+          size="small"
+          placeholder="search..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ minWidth: 320 }}
+          aria-label="Search"
+        />
+
+
+        <Button onClick={() => {navigate("testform")}} startIcon={<AddIcon />} variant="contained" size="small">
+          New
+        </Button>
+
+
+       
+      </Box>
+    </Box>
+  </Box>
+);
+
+
+  // base rows for variant="lab"
+  const baseRows = useMemo(
+    () => labs.map(l => ({
+      id: l.id,
+      name: l.name,
+      testCaseCounter: l.test_count,
+      bookings: l.booking_count,
+      collectors: l.collector_count,
+      status: l.status,
+    })),
+    [labs]
+  );
+
+
+  // sorting state
+  const [sortBy, setSortBy] = useState(null);
+  const [sortDir, setSortDir] = useState(null);
+  const onSortChange = (path, dir) => {
+    setSortBy(path);
+    setSortDir(dir);
+  };
+
+
+  // apply sorting
+  const rows = useMemo(() => {
+    if (!sortBy || !sortDir) return baseRows.slice();
+    const copy = baseRows.slice();
+    copy.sort((a, b) => {
+      const av = getByPath(a, sortBy);
+      const bv = getByPath(b, sortBy);
+      const A = av == null ? '' : av;
+      const B = bv == null ? '' : bv;
+      if (A < B) return sortDir === 'asc' ? -1 : 1;
+      if (A > B) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return copy;
+  }, [baseRows, sortBy, sortDir]);
+
+
+  // selection state
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const allOnPageSelected = rows.length > 0 && rows.every(r => selectedIds.has(r.id));
+
+
+  const toggleOne = (id, checked) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      checked ? next.add(id) : next.delete(id);
+      return next;
+    });
+  };
+
+
+  const toggleAllOnPage = (checked) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) rows.forEach(r => next.add(r.id));
+      else rows.forEach(r => next.delete(r.id));
+      return next;
+    });
+  };
+
+
+  const onView = (row) => {
+    // implement your view logic
+    console.log('view', row);
+  };
+
+
+  const onDelete = (row) => {
+    // implement your delete logic
+    console.log('delete', row);
+  };
+
+
+  const renderHead = () => (
+    <tr>
+      <th style={{ width: 40 }}>
+        <input type="checkbox" checked={allOnPageSelected} onChange={(e) => toggleAllOnPage(e.target.checked)} />
+      </th>
+      <th className="clu-th">
+        <SortHeader label="Collector" path="name" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      </th>
+      <th className="clu-th">
+        <SortHeader label="Lab" path="testCaseCounter" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      </th>
+      <th className="clu-th">
+        <SortHeader label="Contact Number" path="bookings" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      </th>
+      <th className="clu-th">
+        <SortHeader label="Current Status" path="collectors" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      </th>
+      <th className="clu-th">
+        <SortHeader label="Status" path="status" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      </th>
+      <th>Action</th>
+    </tr>
+  );
+
+
+  return (
+    <CollectorListUnified
+      variant=""
+      title="Collector List"
+      rows={rows}
+      total={rows.length}
+      page={1}
+      pageSize={10}
+      onPageChange={() => {}}
+      onPageSizeChange={() => {}}
+      onSearch={() => {}}
+      onOpenAdvancedFilter={() => {}}
+      onExport={() => {}}
+      headerSlot={renderLabHeader}
+      renderHead={renderHead}
+      // No renderActions prop needed since we render actions inside renderRow
+      renderRow={(r) => (
+        <tr key={r.id}>
+          <td>
+            <input
+              type="checkbox"
+              checked={selectedIds.has(r.id)}
+              onChange={(e) => toggleOne(r.id, e.target.checked)}
+            />
+          </td>
+          <td>{r.name}</td>
+          <td>{r.testCaseCounter}</td>
+          <td>{r.bookings}</td>
+          <td>{r.collectors}</td>
+          <td>{r.status}</td>
+          <td>
+            <Stack direction="row" spacing={0.5}>
+              <Tooltip title="View">
+                <IconButton size="small" color="primary" aria-label="view" onClick={() => onView(r)}>
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton size="small" color="error" aria-label="delete" onClick={() => onDelete(r)}>
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </td>
+        </tr>
+      )}
+    />
+  );
 }

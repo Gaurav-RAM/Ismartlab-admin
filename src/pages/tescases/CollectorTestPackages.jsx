@@ -108,11 +108,10 @@ export default function CollectorTestPackages() {
           gap: 2,
         }}
       >
-        {/* Left cluster: No action + Apply + Export */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <FormControl size="small" sx={{ minWidth: 100 }}>
             <Select
-              style={{ width: '90px' }}
+              style={{ width: '90px',height:"40px" }}
               displayEmpty
               value={action}
               onChange={(e) => setAction(e.target.value)}
@@ -132,11 +131,12 @@ export default function CollectorTestPackages() {
             </Select>
           </FormControl>
 
-          <Button variant="contained" size="small" disabled={!action} onClick={handleApply}>
+          <Button style={{height:"40px"}}  variant="contained" size="small" disabled={!action} onClick={handleApply}>
             Apply
           </Button>
 
           <Button
+          style={{height:"40px"}} 
             startIcon={<DownloadRoundedIcon />}
             variant="contained"
             color="error"
@@ -147,10 +147,10 @@ export default function CollectorTestPackages() {
           </Button>
         </Box>
 
-        {/* Right cluster: All filter + search + New + Advanced Filter */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <FormControl size="small" sx={{ minWidth: 73 }}>
             <Select
+            style={{height:"40px"}} 
               displayEmpty
               value={quickFilter}
               onChange={(e) => setQuickFilter(e.target.value)}
@@ -172,6 +172,7 @@ export default function CollectorTestPackages() {
           </FormControl>
 
           <TextField
+          style={{height:"40px"}} 
             size="small"
             placeholder="search..."
             value={query}
@@ -187,11 +188,12 @@ export default function CollectorTestPackages() {
             aria-label="Search"
           />
 
-          <Button onClick={() => { navigate('packageform'); }} startIcon={<AddIcon />} variant="contained" size="small">
+          <Button style={{height:"40px"}} onClick={() => { navigate('packageform'); }} startIcon={<AddIcon />} variant="contained" size="small">
             New
           </Button>
 
           <Button
+          style={{height:"40px"}} 
             startIcon={<FilterListIcon />}
             variant="contained"
             color="error"
@@ -207,7 +209,6 @@ export default function CollectorTestPackages() {
     </Box>
   );
 
-  // Compute rows for table (now includes price and discountPrice)
   const baseRows = useMemo(
     () =>
       labs.map((l) => {
@@ -217,17 +218,16 @@ export default function CollectorTestPackages() {
         return {
           id: l.id,
           name: l.name,
-          labsCounter: l.collector_count,      // mapping to "Labs" column
-          testCaseCounter: l.test_count,       // mapping to "Test Case" column
+          labsCounter: l.collector_count,     
+          testCaseCounter: l.test_count, 
           price,
-          discountPrice,                       // final discounted price to display
+          discountPrice,
           status: l.status,
         };
       }),
     [labs]
   );
 
-  // sorting state
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState(null);
   const onSortChange = (path, dir) => {
@@ -235,7 +235,6 @@ export default function CollectorTestPackages() {
     setSortDir(dir);
   };
 
-  // apply sorting
   const rows = useMemo(() => {
     if (!sortBy || !sortDir) return baseRows.slice();
 
@@ -253,7 +252,6 @@ export default function CollectorTestPackages() {
     return copy;
   }, [baseRows, sortBy, sortDir]);
 
-  // selection state
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const allOnPageSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
 

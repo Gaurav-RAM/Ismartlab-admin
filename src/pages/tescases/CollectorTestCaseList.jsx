@@ -112,7 +112,7 @@ const renderLabHeader = () => (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <FormControl size="small" sx={{ minWidth: 100 }}>
           <Select
-          style={{width:"90px"}}
+          style={{width:"90px",height:"40px"}}
             displayEmpty
             value={action}
             onChange={(e) => setAction(e.target.value)}
@@ -132,11 +132,12 @@ const renderLabHeader = () => (
           </Select>
         </FormControl>
 
-        <Button variant="contained" size="small" disabled={!action} onClick={handleApply}>
+        <Button style={{height:"40px"}} variant="contained" size="small" disabled={!action} onClick={handleApply}>
           Apply
         </Button>
 
         <Button
+        style={{height:"40px"}}
           startIcon={<DownloadRoundedIcon />}
           variant="contained"
           color="error"
@@ -151,6 +152,7 @@ const renderLabHeader = () => (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <FormControl size="small" sx={{ minWidth: 73 }}>
           <Select
+          style={{height:"40px"}}
             displayEmpty
             value={quickFilter}
             onChange={(e) => setQuickFilter(e.target.value)}
@@ -187,11 +189,12 @@ const renderLabHeader = () => (
           aria-label="Search"
         />
 
-        <Button onClick={() => {navigate("testform")}} startIcon={<AddIcon />} variant="contained" size="small">
+        <Button style={{height:"40px"}} onClick={() => {navigate("testform")}} startIcon={<AddIcon />} variant="contained" size="small">
           New
         </Button>
 
         <Button
+        style={{height:"40px"}}
           startIcon={<FilterListIcon />}
           variant="contained"
           color="error"

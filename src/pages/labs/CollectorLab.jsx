@@ -8,6 +8,10 @@ import IconButton from '@mui/material/IconButton';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import {useNavigate } from 'react-router-dom';
+import {
+  FiEdit2, // NEW
+  FiClock
+} from 'react-icons/fi';
 
 
 // helper to read nested props like "collector.name"
@@ -111,7 +115,7 @@ const renderLabHeader = () => (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <FormControl size="small" sx={{ minWidth: 100 }}>
           <Select
-          style={{width:"90px"}}
+          style={{width:"90px", height:"40px"}}
             displayEmpty
             value={action}
             onChange={(e) => setAction(e.target.value)}
@@ -131,7 +135,7 @@ const renderLabHeader = () => (
           </Select>
         </FormControl>
 
-        <Button variant="contained" size="small" disabled={!action} onClick={handleApply}>
+        <Button style={{height:"40px"}}variant="contained" size="small" disabled={!action} onClick={handleApply}>
           Apply
         </Button>
 
@@ -141,6 +145,7 @@ const renderLabHeader = () => (
           color="error"
           size="small"
           onClick={handleExport}
+          style={{height:"40px"}}
         >
           Export
         </Button>
@@ -150,6 +155,7 @@ const renderLabHeader = () => (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <FormControl size="small" sx={{ minWidth: 73 }}>
           <Select
+          style={{height:"40px"}}
             displayEmpty
             value={quickFilter}
             onChange={(e) => setQuickFilter(e.target.value)}
@@ -171,6 +177,7 @@ const renderLabHeader = () => (
         </FormControl>
 
         <TextField
+        style={{height:"40px"}}
           size="small"
           placeholder="search..."
           value={query}
@@ -186,11 +193,12 @@ const renderLabHeader = () => (
           aria-label="Search"
         />
 
-        <Button onClick={() => {navigate("form")}} startIcon={<AddIcon />} variant="contained" size="small">
+        <Button style={{height:"40px"}}  onClick={() => {navigate("form")}} startIcon={<AddIcon />} variant="contained" size="small">
           New
         </Button>
 
         <Button
+        style={{height:"40px"}}
           startIcon={<FilterListIcon />}
           variant="contained"
           color="error"
@@ -332,12 +340,12 @@ const renderLabHeader = () => (
             <Stack direction="row" spacing={0.5}>
               <Tooltip title="View">
                 <IconButton size="small" color="primary" aria-label="view" onClick={() => onView(r)}>
-                  <VisibilityOutlinedIcon fontSize="small" />
+                  <FiClock size={22} color="#4F5BD5" /> 
                 </IconButton>
               </Tooltip>
                <Tooltip title="View">
                 <IconButton size="small" color="primary" aria-label="view" onClick={() => onView(r)}>
-                  <VisibilityOutlinedIcon fontSize="small" />
+                  <FiEdit2 size={22} color="#22C55E" />
                 </IconButton>
               </Tooltip>
               <Tooltip title="View">

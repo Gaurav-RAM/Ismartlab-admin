@@ -1,5 +1,6 @@
 // src/pages/labs/CollectorLab.jsx
 import React, { useState, useMemo } from 'react';
+import styled from 'styled-components';
 import CollectorListUnified from '../../components/CollectorListUnified';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -23,8 +24,53 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 import { Link as RouterLink } from 'react-router-dom';
 
-// helper to read nested props like "collector.name"
+// helper to read nested props like "coupon.code"
 const getByPath = (obj, path) => path.split('.').reduce((a, k) => (a ? a[k] : undefined), obj);
+
+// styled-components SortHeader
+const ThButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+`;
+
+const SortIcon = styled.span`
+  width: 10px;
+  height: 12px;
+  position: relative;
+  display: inline-block;
+
+  &::before,
+  &::after {
+    content: "";
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+  }
+
+  /* Up arrow */
+  &::before {
+    border-bottom: 6px solid
+      ${({ $active, $dir }) =>
+        $active && $dir === "asc" ? "#fff" : "rgba(255,255,255,0.45)"};
+    margin-bottom: 2px;
+  }
+
+  /* Down arrow */
+  &::after {
+    border-top: 6px solid
+      ${({ $active, $dir }) =>
+        $active && $dir === "desc" ? "#fff" : "rgba(255,255,255,0.45)"};
+  }
+`;
 
 function SortHeader({ label, path, sortBy, sortDir, onChange }) {
   const next = () => {
@@ -32,16 +78,16 @@ function SortHeader({ label, path, sortBy, sortDir, onChange }) {
     if (sortDir === 'asc') return onChange(path, 'desc');
     return onChange(null, null);
   };
-  const iconCls = sortBy === path ? (sortDir === 'asc' ? 'clu-sort asc' : 'clu-sort desc') : 'clu-sort';
+  const active = sortBy === path;
   return (
-    <button className="clu-thbtn" onClick={next} aria-label={`Sort by ${label}`}>
+    <ThButton onClick={next} aria-label={`Sort by ${label}`}>
       <span>{label}</span>
-      <span className={iconCls} aria-hidden="true" />
-    </button>
+      <SortIcon $active={active} $dir={sortDir} aria-hidden="true" />
+    </ThButton>
   );
 }
 
-export default function CollectorTestCaseList() {
+export default function Coupans() {
   const navigate = useNavigate();
 
   // local UI state for header controls
@@ -49,27 +95,33 @@ export default function CollectorTestCaseList() {
   const [query, setQuery] = useState('');
   const [quickFilter, setQuickFilter] = useState('');
 
-  const [labs] = useState([
-    { id: 'l1', name: 'CollectorLab A', test_count: 12, booking_count: 5, collector_count: 3, status: 'Active' },
-    { id: 'l2', name: 'CollectorLab B', test_count: 7,  booking_count: 2, collector_count: 1, status: 'Inactive' },
+  // coupons data aligned to header columns
+  const [coupons] = useState([
+    { id: 'c1', code: 'SAVE10', lab: 'CollectorLab A', discountValue: '10%', startAt: '2025-11-01', endAt: '2025-12-31', status: 'Active' },
+    { id: 'c2', code: 'NEW20',  lab: 'CollectorLab B', discountValue: '20%', startAt: '2025-10-15', endAt: '2025-11-30', status: 'Inactive' },
+    { id: 'c3', code: 'FEST15', lab: 'CollectorLab A', discountValue: '15%', startAt: '2025-11-10', endAt: '2026-01-10', status: 'Active' },
+    { id: 'c4', code: 'WELCOME5', lab: 'CollectorLab C', discountValue: '5%', startAt: '2025-09-01', endAt: '2025-12-01', status: 'Active' },
+    { id: 'c5', code: 'LAB25', lab: 'CollectorLab B', discountValue: '25%', startAt: '2025-11-05', endAt: '2025-11-25', status: 'Inactive' },
   ]);
 
-  const bulkActions = [
-    { value: 'enable', label: 'Enable' },
-    { value: 'disable', label: 'Disable' },
-  ];
-  const filterOptions = [
-    { value: '', label: 'All' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-  ];
   const breadcrumbs = [
     { label: 'Dashboard', to: '/' },
     { label: 'Collector List' },
   ];
 
+  const bulkActions = [
+    { value: 'enable', label: 'Enable' },
+    { value: 'disable', label: 'Disable' },
+  ];
+
+  const filterOptions = [
+    { value: '', label: 'All' },
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
+  ];
+
   const handleApply = () => {
-    // No selection column anymore; implement bulk action via filters or remove this button
+    // TODO: apply bulk action to selected rows
   };
   const handleExport = () => {
     // TODO: export current rows/filter
@@ -150,7 +202,7 @@ export default function CollectorTestCaseList() {
             aria-label="Search"
           />
 
-          <Button onClick={() => { navigate("testform"); }} startIcon={<AddIcon />} variant="contained" size="small">
+          <Button onClick={() => { navigate(""); }} startIcon={<AddIcon />} variant="contained" size="small">
             New
           </Button>
 
@@ -162,20 +214,6 @@ export default function CollectorTestCaseList() {
     </Box>
   );
 
-  // rows for table
-  const baseRows = useMemo(
-    () =>
-      labs.map(l => ({
-        id: l.id,
-        name: l.name,
-        testCaseCounter: l.test_count,
-        bookings: l.booking_count,
-        collectors: l.collector_count,
-        status: l.status,
-      })),
-    [labs]
-  );
-
   // sorting state
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState(null);
@@ -184,10 +222,25 @@ export default function CollectorTestCaseList() {
     setSortDir(dir);
   };
 
+  // apply search / quick filter (basic demo)
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return coupons.filter(c => {
+      const statusOk = quickFilter ? c.status.toLowerCase() === quickFilter : true;
+      const textOk = !q
+        ? true
+        : [c.code, c.lab, c.discountValue, c.startAt, c.endAt, c.status]
+            .join(' ')
+            .toLowerCase()
+            .includes(q);
+      return statusOk && textOk;
+    });
+  }, [coupons, query, quickFilter]);
+
   // apply sorting
   const rows = useMemo(() => {
-    if (!sortBy || !sortDir) return baseRows.slice();
-    const copy = baseRows.slice();
+    if (!sortBy || !sortDir) return filtered.slice();
+    const copy = filtered.slice();
     copy.sort((a, b) => {
       const av = getByPath(a, sortBy);
       const bv = getByPath(b, sortBy);
@@ -198,33 +251,64 @@ export default function CollectorTestCaseList() {
       return 0;
     });
     return copy;
-  }, [baseRows, sortBy, sortDir]);
+  }, [filtered, sortBy, sortDir]);
 
-  const onView = (row) => {
-    console.log('view', row);
+  // selection state (checkbox column)
+  const [selected, setSelected] = useState(() => new Set());
+  const visibleIds = rows.map(r => r.id);
+  const allOnPageSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
+  const toggleAllOnPage = (checked) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (checked) visibleIds.forEach(id => next.add(id));
+      else visibleIds.forEach(id => next.delete(id));
+      return next;
+    });
   };
-  const onDelete = (row) => {
-    console.log('delete', row);
+  const toggleOne = (id, checked) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
   };
 
-  // table head WITHOUT checkbox column
+  // table head WITH checkbox column
   const renderHead = () => (
     <tr>
-      <th className="clu-th">
-        <SortHeader label="Collector" path="name" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      <th style={{ width: 40 }}>
+        <input
+          type="checkbox"
+          checked={allOnPageSelected}
+          onChange={(e) => toggleAllOnPage(e.target.checked)}
+          aria-label="Select all on page"
+        />
       </th>
-      <th className="clu-th">
-        <SortHeader label="Lab" path="testCaseCounter" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+
+      <th aria-sort={sortBy === "code" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
+        <SortHeader label="Coupon Code" path="code" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
-      <th className="clu-th">
-        <SortHeader label="Contact Number" path="bookings" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+
+      <th aria-sort={sortBy === "lab" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
+        <SortHeader label="Lab" path="lab" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
-      <th className="clu-th">
-        <SortHeader label="Current Status" path="collectors" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+
+      <th aria-sort={sortBy === "discountValue" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
+        <SortHeader label="Discount Value" path="discountValue" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
-      <th className="clu-th">
+
+      <th aria-sort={sortBy === "startAt" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
+        <SortHeader label="Start At" path="startAt" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      </th>
+
+      <th aria-sort={sortBy === "endAt" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
+        <SortHeader label="End At" path="endAt" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      </th>
+
+      <th aria-sort={sortBy === "status" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
         <SortHeader label="Status" path="status" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
+
       <th>Action</th>
     </tr>
   );
@@ -246,21 +330,31 @@ export default function CollectorTestCaseList() {
       renderHead={renderHead}
       renderRow={(r) => (
         <tr key={r.id}>
-          {/* row WITHOUT checkbox cell */}
-          <td>{r.name}</td>
-          <td>{r.testCaseCounter}</td>
-          <td>{r.bookings}</td>
-          <td>{r.collectors}</td>
+          {/* row WITH checkbox cell */}
+          <td style={{ width: 40 }}>
+            <input
+              type="checkbox"
+              checked={selected.has(r.id)}
+              onChange={(e) => toggleOne(r.id, e.target.checked)}
+              aria-label={`Select row ${r.code}`}
+            />
+          </td>
+
+          <td>{r.code}</td>
+          <td>{r.lab}</td>
+          <td>{r.discountValue}</td>
+          <td>{r.startAt}</td>
+          <td>{r.endAt}</td>
           <td>{r.status}</td>
           <td>
             <Stack direction="row" spacing={0.5}>
               <Tooltip title="View">
-                <IconButton size="small" color="primary" aria-label="view" onClick={() => onView(r)}>
+                <IconButton size="small" color="primary" aria-label="view" onClick={() => console.log('view', r)}>
                   <EditOutlinedIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Delete">
-                <IconButton size="small" color="error" aria-label="delete" onClick={() => onDelete(r)}>
+                <IconButton size="small" color="error" aria-label="delete" onClick={() => console.log('delete', r)}>
                   <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
               </Tooltip>

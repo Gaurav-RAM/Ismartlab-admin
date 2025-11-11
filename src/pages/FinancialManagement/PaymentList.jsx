@@ -21,18 +21,37 @@ const SortStyles = createGlobalStyle`
 
 /* ===== SVG sort icon (dual triangles, tri-state) ===== */
 const IconSort = ({ state }) => {
-  // state: "asc" | "desc" | null
   const passive = "rgba(255,255,255,0.45)";
   const active = "#ffffff";
   return (
     <svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true" focusable="false">
-      {/* Up triangle */}
       <path d="M5 2 L1 6 H9 Z" fill={state === "asc" ? active : passive} />
-      {/* Down triangle */}
       <path d="M5 14 L9 10 H1 Z" fill={state === "desc" ? active : passive} />
     </svg>
   );
 };
+
+/* ===== Sort header component (tri-state) ===== */
+function SortHeader({ label, path, sortBy, sortDir, onChange, alignRight }) {
+  const next = () => {
+    if (sortBy !== path) return onChange(path, "asc");
+    if (sortDir === "asc") return onChange(path, "desc");
+    return onChange(null, null);
+  };
+  const state = sortBy === path ? sortDir : null;
+
+  return (
+    <button
+      className="clu-thbtn"
+      onClick={next}
+      aria-label={`Sort by ${label}`}
+      style={{ justifyContent: alignRight ? "flex-end" : "flex-start" }}
+    >
+      <span>{label}</span>
+      <IconSort state={state} />
+    </button>
+  );
+}
 
 /* ===== Theme ===== */
 const colors = {
@@ -122,13 +141,13 @@ const Card = styled.div`
   overflow: hidden;
 `;
 
-const columns = "90px 1.4fr 1.4fr 1fr 0.9fr 1.2fr 1.1fr"; // 7 columns
+const columnsCss = "90px 1.4fr 1.4fr 1fr 0.9fr 1.2fr 1.1fr"; // 7 columns
 
 const TableHead = styled.div`
   background: ${colors.header};
   color: ${colors.headerText};
   display: grid;
-  grid-template-columns: ${columns};
+  grid-template-columns: ${columnsCss};
   padding: 14px 16px;
   font-weight: 600;
   font-size: 14px;
@@ -148,7 +167,7 @@ const TableBody = styled.div`
 
 const Row = styled.div`
   display: grid;
-  grid-template-columns: ${columns};
+  grid-template-columns: ${columnsCss};
   padding: 16px;
   border-top: 1px solid ${colors.border};
   align-items: center;
@@ -163,9 +182,7 @@ const IdLink = styled.a`
   &:hover { text-decoration: underline; }
 `;
 
-const CustomerCell = styled.div`
-  display: flex; align-items: center; gap: 12px;
-`;
+const CustomerCell = styled.div`display: flex; align-items: center; gap: 12px;`;
 
 const Avatar = styled.div`
   width: 36px; height: 36px; border-radius: 50%;
@@ -181,29 +198,17 @@ const CustomerText = styled.div`
 `;
 
 const Badge = styled.span`
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  display: inline-block;
+  padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; display: inline-block;
   ${p => p.type === "paid"
     ? css`background: ${colors.successBg}; color: ${colors.success};`
     : css`background: ${colors.infoBg}; color: ${colors.info};`}
 `;
 
-const Right = styled.div`
-  text-align: right;
-  font-weight: 600;
-`;
+const Right = styled.div`text-align: right; font-weight: 600;`;
 
 const Footer = styled.div`
-  padding: 14px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: ${colors.subtext};
-  gap: 12px;
-  flex-wrap: wrap;
+  padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
+  color: ${colors.subtext}; gap: 12px; flex-wrap: wrap;
 `;
 
 const ShowEntries = styled.div`
@@ -211,28 +216,22 @@ const ShowEntries = styled.div`
   select {
     border: 1px solid ${colors.border};
     background: ${colors.card};
-    padding: 6px 8px;
-    border-radius: 8px;
+    padding: 6px 8px; border-radius: 8px;
   }
 `;
 
-const Pagination = styled.div`
-  display: inline-flex; gap: 8px; align-items: center;
-`;
+const Pagination = styled.div`display: inline-flex; gap: 8px; align-items: center;`;
 
 const PageBtn = styled.button`
   border: 1px solid ${colors.border};
   background: ${p => (p.active ? colors.primary : colors.card)};
   color: ${p => (p.active ? "#fff" : colors.text)};
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer;
   &:disabled { opacity: 0.5; cursor: default; }
 `;
 
 /* ===== Utilities & mock data ===== */
-const formatCurrency = n =>
-  n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+const formatCurrency = n => n.toLocaleString(undefined, { style: "currency", currency: "USD" });
 
 const originalRows = [
   { id: 11, testCase: "Multiparametric MRI Test", name: "John Doe", email: "john@gmail.com", paymentType: "Stripe", status: "Paid",    date: "2025-11-07 10:03", amount: 331.9 },
@@ -241,30 +240,6 @@ const originalRows = [
   { id: 6,  testCase: "Advanced Metabolic & Heart Health Package", name: "John Doe", email: "john@gmail.com", paymentType: "-",      status: "Pending", date: "2025-11-14 09:57", amount: 461.9 },
   { id: 5,  testCase: "Liver & Cholesterol Health Package", name: "John Doe", email: "john@gmail.com", paymentType: "-",      status: "Pending", date: "2025-11-07 10:13", amount: 197.9 },
 ];
-
-/* ===== Sort header component (uses SVG icon) ===== */
-function SortHeader({ label, path, sortBy, sortDir, onChange, alignRight }) {
-  const next = () => {
-    if (sortBy !== path) return onChange(path, "asc");
-    if (sortDir === "asc") return onChange(path, "desc");
-    return onChange(null, null);
-  };
-  const state = sortBy === path ? sortDir : null;
-
-  return (
-    <button
-      className="clu-thbtn"
-      onClick={next}
-      aria-label={`Sort by ${label}`}
-      style={{
-        justifyContent: alignRight ? "flex-end" : "flex-start",
-      }}
-    >
-      <span>{label}</span>
-      <IconSort state={state} />
-    </button>
-  );
-}
 
 /* ===== Page component ===== */
 export default function PaymentList() {
@@ -288,7 +263,7 @@ export default function PaymentList() {
             .toLowerCase()
             .includes(q)
         )
-      : originalRows.slice(); // preserve original order when unsorted
+      : originalRows.slice();
 
     if (!sort.key || !sort.dir) return base;
 
@@ -296,6 +271,7 @@ export default function PaymentList() {
     return base.sort((a, b) => {
       const av = a[sort.key];
       const bv = b[sort.key];
+      if (sort.key === "amount") return (Number(av) - Number(bv)) * dir;
       if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
       return String(av).localeCompare(String(bv)) * dir;
     });
@@ -349,55 +325,25 @@ export default function PaymentList() {
       <Card>
         <TableHead>
           <HeadCell>
-            <SortHeader
-              label="ID"
-              path="id"
-              sortBy={sort.key}
-              sortDir={sort.dir}
-              onChange={handleSortChange}
-            />
+            <SortHeader label="ID" path="id" sortBy={sort.key} sortDir={sort.dir} onChange={handleSortChange} />
           </HeadCell>
 
           <HeadCell>Test Case</HeadCell>
 
           <HeadCell>
-            <SortHeader
-              label="Customer"
-              path="name"
-              sortBy={sort.key}
-              sortDir={sort.dir}
-              onChange={handleSortChange}
-            />
+            <SortHeader label="Customer" path="name" sortBy={sort.key} sortDir={sort.dir} onChange={handleSortChange} />
           </HeadCell>
 
           <HeadCell>
-            <SortHeader
-              label="Payment Type"
-              path="paymentType"
-              sortBy={sort.key}
-              sortDir={sort.dir}
-              onChange={handleSortChange}
-            />
+            <SortHeader label="Payment Type" path="paymentType" sortBy={sort.key} sortDir={sort.dir} onChange={handleSortChange} />
           </HeadCell>
 
           <HeadCell>
-            <SortHeader
-              label="Status"
-              path="status"
-              sortBy={sort.key}
-              sortDir={sort.dir}
-              onChange={handleSortChange}
-            />
+            <SortHeader label="Status" path="status" sortBy={sort.key} sortDir={sort.dir} onChange={handleSortChange} />
           </HeadCell>
 
           <HeadCell>
-            <SortHeader
-              label="Date & Time"
-              path="date"
-              sortBy={sort.key}
-              sortDir={sort.dir}
-              onChange={handleSortChange}
-            />
+            <SortHeader label="Date & Time" path="date" sortBy={sort.key} sortDir={sort.dir} onChange={handleSortChange} />
           </HeadCell>
 
           <HeadCell right>
@@ -435,10 +381,7 @@ export default function PaymentList() {
         <Footer>
           <ShowEntries>
             <span>Show</span>
-            <select
-              value={rowsPerPage}
-              onChange={e => { setRowsPerPage(Number(e.target.value)); setPage(1); }}
-            >
+            <select value={rowsPerPage} onChange={e => { setRowsPerPage(Number(e.target.value)); setPage(1); }}>
               {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
             <span>entries</span>

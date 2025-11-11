@@ -310,11 +310,11 @@ export default function CollectorLabSessionPage(){
 
         <TopBar>
           <LeftGroup>
-            <Button variant="danger">Export</Button>
+            <Button style={{height:"40px"}} variant="danger">Export</Button>
           </LeftGroup>
 
           <RightGroup>
-            <SearchWrap>
+            <SearchWrap style={{height:"40px"}}>
               <Search size={16} />
               <input
                 value={q}
@@ -323,11 +323,11 @@ export default function CollectorLabSessionPage(){
               />
             </SearchWrap>
 
-            <Button  onClick={() => navigate("session")}>
+            <Button style={{height:"40px"}}  onClick={() => navigate("session")}>
               <Plus size={18}/> New
             </Button>
 
-            <Button variant="danger" onClick={() => setOpenFilter(true)}>
+            <Button  style={{height:"40px"}}variant="danger" onClick={() => setOpenFilter(true)}>
               <FilterIcon size={18}/> Advanced Filter
             </Button>
           </RightGroup>
