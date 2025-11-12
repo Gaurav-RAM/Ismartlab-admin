@@ -1,11 +1,12 @@
 // src/pages/Dashboard.jsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import StatCard from '../components/StateCard.jsx';
 import PieCard from '../components/PieCards.jsx';
-import "./Dashboard.css";
+import './Dashboard.css';
+import ReactApexChart from 'react-apexcharts';
 
 import {
-  collection, query, where, getDocs, limit,
+  collection, query, where, getDocs,
   getCountFromServer, getAggregateFromServer, sum, Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -69,29 +70,206 @@ function Avatar({ name }) {
   );
 }
 
+/* -------- Top-right date range (popover) -------- */
+function RangePicker({ range, onChange, onSubmit }) {
+  const [open, setOpen] = useState(false);
+  const pop = useRef(null);
+  const btn = useRef(null);
+
+  const label = `${range.start} to ${range.end}`;
+
+  // Close when clicking outside
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!open) return;
+      if (pop.current && !pop.current.contains(e.target) && btn.current && !btn.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
+  return (
+    <div style={{ position: 'relative', display: 'flex', gap: 12, alignItems: 'center' }}>
+      <button
+        ref={btn}
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        style={{
+          height: 40,
+          minWidth: 240,
+          padding: '0 12px',
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          background: 'var(--panel, #fff)',
+          color: 'var(--text, #111827)',
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+        title="Pick date range"
+      >
+        {label}
+      </button>
+
+      <button
+        type="button"
+        onClick={onSubmit}
+        style={{
+          height: 40,
+          padding: '0 16px',
+          background: 'var(--primary-600, #4f46e5)',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          cursor: 'pointer',
+        }}
+      >
+        Submit
+      </button>
+
+      {open && (
+        <div
+          ref={pop}
+          role="dialog"
+          aria-label="Select date range"
+          style={{
+            position: 'absolute',
+            top: 46,
+            right: 0,
+            zIndex: 10,
+            padding: 12,
+            width: 320,
+            background: 'var(--panel, #fff)',
+            border: '1px solid var(--border, #e5e7eb)',
+            borderRadius: 10,
+            boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)' }}>Start</label>
+              <input
+                type="date"
+                value={range.start}
+                onChange={(e) => onChange(r => ({ ...r, start: e.target.value }))}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel)' }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)' }}>End</label>
+              <input
+                type="date"
+                value={range.end}
+                onChange={(e) => onChange(r => ({ ...r, end: e.target.value }))}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel)' }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              style={{ height: 34, padding: '0 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'transparent', cursor: 'pointer' }}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); onSubmit?.(); }}
+              style={{ height: 34, padding: '0 12px', background: 'var(--primary-600, #4f46e5)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------- Bar chart (ApexCharts) -------- */
 function BarChartCard({ title, data, yPrefix = '$' }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
+  const CURRENCY = 'USD';
+  const currencyFmt = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: CURRENCY,
+    maximumFractionDigits: 2,
+  });
+
+  const MONTH_FULL = {
+    Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April',
+    May: 'May', Jun: 'June', Jul: 'July', Aug: 'August',
+    Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December',
+  };
+
+  const categories = data.map(d => MONTH_FULL[d.label] || d.label);
+  const series = [{ name: 'Revenue', data: data.map(d => Number(d.value || 0)) }];
+
+  const options = {
+    chart: {
+      type: 'bar',
+      toolbar: {
+        show: true,
+        tools: { download: true },
+        export: {
+          csv: { filename: (title || 'chart').replace(/\s+/g, '_') },
+          png: { filename: (title || 'chart').replace(/\s+/g, '_') },
+          svg: { filename: (title || 'chart').replace(/\s+/g, '_') },
+        },
+      },
+      foreColor: 'var(--muted, #6b7280)',
+      fontFamily:
+        'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
+    },
+    colors: ['#4f46e5'],
+    plotOptions: {
+      bar: { columnWidth: '40%', borderRadius: 6 },
+    },
+    dataLabels: { enabled: false },
+    grid: {
+      borderColor: 'var(--border, #e5e7eb)',
+      strokeDashArray: 3,
+      yaxis: { lines: { show: true } },
+      xaxis: { lines: { show: false } },
+    },
+    xaxis: {
+      categories,
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      labels: { rotate: -15 },
+    },
+    yaxis: {
+      title: { text: 'Total Revenue Generated' },
+      labels: {
+        formatter: (val) => {
+          const f = currencyFmt.format(val);
+          return yPrefix && yPrefix !== '$' ? f.replace('$', yPrefix) : f;
+        },
+      },
+    },
+    tooltip: {
+      y: { formatter: (val) => currencyFmt.format(val) },
+    },
+    fill: {
+      type: 'gradient',
+      gradient: { shade: 'light', type: 'vertical', opacityFrom: 0.9, opacityTo: 0.7 },
+    },
+    noData: { text: 'No data' },
+  };
+
   return (
     <div className="card">
       <div className="chart-title">{title}</div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 260, padding: '16px 8px 0 8px' }}>
-        {data.map((d) => {
-          const h = (d.value / max) * 210 + 4;
-          return (
-            <div key={d.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 28 }}>
-              <div title={`${d.label}: ${yPrefix}${d.value}`} style={{ width: 24, height: h, background: 'var(--primary-600)', borderRadius: 6 }} />
-              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>{d.label}</div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--muted)' }}>Total Revenue Generated</div>
+      <ReactApexChart options={options} series={series} type="bar" height={300} />
     </div>
   );
 }
 
 export default function Dashboard() {
-  const [range, setRange] = useState({ start: '2025-11-01', end: '2025-11-03' });
+  const [range, setRange] = useState({ start: '2025-11-01', end: '2025-11-12' });
 
   const [totals, setTotals] = useState({
     allAppointments: 0,
@@ -268,34 +446,16 @@ export default function Dashboard() {
 
   return (
     <main style={{ padding: 18, minWidth: 0 }}>
+      {/* Top-right toolbar */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <input
-          type="date"
-          value={range.start}
-          onChange={(e) => setRange((r) => ({ ...r, start: e.target.value }))}
-          style={{ padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel)' }}
-        />
-        <span style={{ color: 'var(--muted)' }}>to</span>
-        <input
-          type="date"
-          value={range.end}
-          onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))}
-          style={{ padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel)' }}
-        />
-        <button
-          type="button"
-          style={{
-            padding: '8px 14px',
-            background: 'var(--primary-600)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            cursor: 'pointer',
+        <RangePicker
+          range={range}
+          onChange={setRange}
+          onSubmit={() => {
+            // Hook for filtering actions when user confirms the range
+            // Current data reload is already tied to [range] effect
           }}
-          onClick={() => {}}
-        >
-          Submit
-        </button>
+        />
       </div>
 
       <div className="grid" style={{ alignItems: 'stretch' }}>

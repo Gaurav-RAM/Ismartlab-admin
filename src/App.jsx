@@ -25,19 +25,15 @@ import CollectorTestCaseList from "./pages/tescases/CollectorTestCaseList.jsx";
 import CollectorTestCaseForm from "./pages/tescases/CollectorTestCaseForm.jsx";
 import CollectorTestPackages from "./pages/tescases/CollectorTestPackages.jsx";
 import CollectorPackagesForm from "./pages/tescases/CollectorPackagesForm.jsx";
-
 import CollectorPrescription from "./pages/prescriptions/CollectorPrescription.jsx";
-
 import CollectorPendingPrescription from "./pages/prescriptions/CollectorPendingPrescription.jsx";
-
 import CollectorReviews from "./pages/reviews/CollectorReviews.jsx";
 import PaymentList from "./pages/FinancialManagement/PaymentList.jsx";
 import Payouts from "./pages/FinancialManagement/Payouts.jsx";
 import CashPaymentList from "./pages/FinancialManagement/CashPaymentList.jsx";
 import Coupans from "./pages/FinancialManagement/Coupans.jsx";
 import TopBookTestCase from "./pages/report/TopBookTestCase.jsx";
-
-
+import AppointmentViewPage from "./pages/appointments/AppointmentViewPage.jsx";
 
 export default function App() {
   return (
@@ -49,6 +45,11 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/appointments/new" element={<AppointmentCreatePage />} />
+
+          <Route
+            path="/appointments/view/:id"
+            element={<AppointmentViewPage />}
+          />
           <Route path="/collectors/new" element={<CreateCollectorForm />} />
           <Route path="/collectors/list" element={<CollectorListPage />} />
           <Route
@@ -72,12 +73,7 @@ export default function App() {
             element={<CollectorDocumentForm />}
           />
 
-            <Route
-            path="/topbook"
-            element={<TopBookTestCase />}
-          />
-
-          
+          <Route path="/topbook" element={<TopBookTestCase />} />
 
           <Route path="/labs" element={<CollectorLab />} />
 
@@ -109,28 +105,13 @@ export default function App() {
             path="/pendingpres"
             element={<CollectorPendingPrescription />}
           />
-           <Route
-            path="/paymentlist"
-            element={<PaymentList />}
-          />
+          <Route path="/paymentlist" element={<PaymentList />} />
 
+          <Route path="/cashpaymentlist" element={<CashPaymentList />} />
 
-           <Route
-            path="/cashpaymentlist"
-            element={<CashPaymentList />}
-          />
+          <Route path="/payouts" element={<Payouts />} />
 
-           <Route
-            path="/payouts"
-            element={<Payouts />}
-          />
-
-           <Route
-            path="/coupans"
-            element={<Coupans />}
-          />
-
-          
+          <Route path="/coupans" element={<Coupans />} />
 
           <Route path="/reviews" element={<CollectorReviews />} />
 

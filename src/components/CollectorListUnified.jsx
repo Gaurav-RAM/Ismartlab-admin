@@ -1,4 +1,3 @@
-// src/components/CollectorListUnified.jsx
 import React from 'react';
 import "./styles/common.css";
 
@@ -23,9 +22,9 @@ export default function CollectorListUnified(props) {
     rowKey,
     renderActions,
     emptyText = 'No Data Found',
-    headerSlot,            // optional custom header bar
-    renderHead,            // optional custom <tr> for table header
-    renderRow,             // optional custom <tr> per data row
+    headerSlot,             // optional custom header bar
+    renderHead,             // optional custom <tr> for table header
+    renderRow,              // optional custom <tr> per data row
     hideActionsRow = false
   } = props;
 
@@ -50,52 +49,12 @@ export default function CollectorListUnified(props) {
       {hasHeaderSlot ? (
         <div className="clu-top">{headerSlot()}</div>
       ) : (
-        <div className="clu-top">
-          <h5 className="clu-title">{resolvedTitle}</h5>
-          <div className="clu-right">
-            <div className="clu-search">
-              <span className="clu-search-label">search…</span>
-              <input
-                className="clu-input"
-                value={search}
-                onChange={(e) => onSearch(e.target.value)}
-                placeholder="search…"
-              />
-            </div>
-            <button className="clu-btn outline" onClick={onOpenAdvancedFilter}>
-              Advanced Filter
-            </button>
-          </div>
-        </div>
+        ""
       )}
 
-      {/* Bulk actions row (auto-hidden when a headerSlot is provided) */}
-      {!hideActionsRow && !hasHeaderSlot && (
-        <div className="clu-actions">
-          <select
-            className="clu-select"
-            value={selectedAction}
-            onChange={(e) => onActionChange(e.target.value)}
-          >
-            <option value="">No action</option>
-            {bulkActions.map((b) => (
-              <option key={b.value} value={b.value}>
-                {b.label}
-              </option>
-            ))}
-          </select>
-          <button className="clu-btn" disabled={!selectedAction} onClick={onApply}>
-            Apply
-          </button>
-          <button className="clu-btn danger" onClick={onExport}>
-            Export
-          </button>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="clu-card">
-        <table className="clu-table">
+      {/* Table with only table area scrollable and sticky header */}
+      <div className="clu-table-scroll" style={{ maxHeight: '420px', overflow: 'auto', width: '100%' }}>
+        <table className="clu-table" style={{ minWidth: 1100 }}>
           <thead>
             {renderHead ? (
               renderHead()

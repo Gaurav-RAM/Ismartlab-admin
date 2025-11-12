@@ -69,11 +69,7 @@ export default function Topbar() {
   }
 
   return (
-    <header className="topbar">
-      <div className="search">
-        <input type="date" />
-        <button className="btn">Submit</button>
-      </div>
+    <header style={{justifyContent:"flex-end"}} className="topbar">
 
       <div className="top-actions">
         <span>A</span>

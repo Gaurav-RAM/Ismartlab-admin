@@ -1,5 +1,4 @@
-// src/pages/labs/CollectorLab.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import CollectorListUnified from '../../components/CollectorListUnified';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -7,11 +6,8 @@ import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import {useNavigate } from 'react-router-dom';
-
-
-// helper to read nested props like "collector.name"
-const getByPath = (obj, path) => path.split('.').reduce((a, k) => (a ? a[k] : undefined), obj);
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
@@ -22,15 +18,17 @@ import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 import { Link as RouterLink } from 'react-router-dom';
 
+import { db } from '../../firebase';
+import { collection, onSnapshot, query as fsQuery, orderBy } from 'firebase/firestore';
 
+// Helper to get deeply nested props
+const getByPath = (obj, path) => path.split('.').reduce((a, k) => (a ? a[k] : undefined), obj);
 
-// sort header with toggle
 function SortHeader({ label, path, sortBy, sortDir, onChange }) {
   const next = () => {
     if (sortBy !== path) return onChange(path, 'asc');
@@ -47,181 +45,159 @@ function SortHeader({ label, path, sortBy, sortDir, onChange }) {
 }
 
 export default function CollectorTestCaseList() {
-    const navigate = useNavigate();
-  // local UI state for header controls
-const [action, setAction] = useState('');
-const [query, setQuery] = useState('');
-const [quickFilter, setQuickFilter] = useState('');
-  const [labs] = useState([
-    { id: 'l1', name: 'CollectorLab A', test_count: 12, booking_count: 5, collector_count: 3, status: 'Active' },
-    { id: 'l2', name: 'CollectorLab B', test_count: 7,  booking_count: 2, collector_count: 1, status: 'Inactive' },
-  ]);
+  const navigate = useNavigate();
+  const [action, setAction] = useState('');
+  const [query, setQuery] = useState('');
+  const [quickFilter, setQuickFilter] = useState('');
+  const [rowsFromDb, setRowsFromDb] = useState([]);
 
-  
-// optional data for dropdowns/breadcrumbs
-const bulkActions = [
-  { value: 'enable', label: 'Enable' },
-  { value: 'disable', label: 'Disable' },
-];
-const filterOptions = [
-  { value: '', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-];
-const breadcrumbs = [
-  { label: 'Dashboard', to: '/' },
-  { label: 'TestCaseList' },
-];
+  // Listen to Firestore collector_test_cases and map correct fields
+  useEffect(() => {
+    const col = collection(db, 'collector_test_cases');
+    // Order by testName if you want, or remove orderBy if not all docs have this
+    const unsub = onSnapshot(col, (snapshot) => {
+      setRowsFromDb(snapshot.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          testName: d.testName ?? '',
+          testType: d.testType ?? '',
+          testCode: d.testCode ?? '',
+          lab: getByPath(d, 'details.lab') ?? '',
+          category: d.category ?? '',
+          status: getByPath(d, 'flags.active') ? 'Active' : 'Inactive',
+        };
+      }));
+    });
+    return unsub;
+  }, []);
 
-// handlers
-const handleApply = () => {
-  // TODO: apply bulk action with `action` and your `selectedIds`
-};
-const handleExport = () => {
-  // TODO: export current rows/filter
-};
+  const bulkActions = [
+    { value: 'enable', label: 'Enable' },
+    { value: 'disable', label: 'Disable' },
+  ];
+  const filterOptions = [
+    { value: '', label: 'All' },
+    { value: 'Active', label: 'Active' },
+    { value: 'Inactive', label: 'Inactive' },
+  ];
+  const breadcrumbs = [
+    { label: 'Dashboard', to: '/' },
+    { label: 'TestCaseList' },
+  ];
 
-// headerSlot function
-const renderLabHeader = () => (
-  <Box sx={{ width: '100%' }}>
-    {/* Breadcrumbs */}
-    <Box sx={{ mb: 2.5 }}>
-      <Breadcrumbs aria-label="breadcrumb">
-        {breadcrumbs.map((b, i) =>
-          b.to ? (
-            <Link key={i} component={RouterLink} underline="hover" to={b.to}>
-              {b.label}
-            </Link>
-          ) : (
-            <Typography key={i}>{b.label}</Typography>
-          )
-        )}
-      </Breadcrumbs>
-    </Box>
+  const handleApply = () => {};
+  const handleExport = () => {};
 
-    {/* Toolbar: left cluster + right cluster */}
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 2,
-      }}
-    >
-      {/* Left cluster: No action + Apply + Export */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <FormControl size="small" sx={{ minWidth: 100 }}>
-          <Select
-          style={{width:"90px",height:"40px"}}
-            displayEmpty
-            value={action}
-            onChange={(e) => setAction(e.target.value)}
-            renderValue={(val) =>
-              val ? (bulkActions.find(a => a.value === val)?.label ?? '') : 'No action'
-            }
-            aria-label="Bulk action"
-          >
-            <MenuItem value="">
-              <em>No action</em>
-            </MenuItem>
-            {bulkActions.map((a) => (
-              <MenuItem key={a.value} value={a.value}>
-                {a.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Button style={{height:"40px"}} variant="contained" size="small" disabled={!action} onClick={handleApply}>
-          Apply
-        </Button>
-
-        <Button
-        style={{height:"40px"}}
-          startIcon={<DownloadRoundedIcon />}
-          variant="contained"
-          color="error"
-          size="small"
-          onClick={handleExport}
-        >
-          Export
-        </Button>
+  const renderLabHeader = () => (
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ mb: 2.5 }}>
+        <Breadcrumbs aria-label="breadcrumb">
+          {breadcrumbs.map((b, i) =>
+            b.to ? (
+              <Link key={i} component={RouterLink} underline="hover" to={b.to}>
+                {b.label}
+              </Link>
+            ) : (
+              <Typography key={i}>{b.label}</Typography>
+            )
+          )}
+        </Breadcrumbs>
       </Box>
-
-      {/* Right cluster: All filter + search + New + Advanced Filter */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <FormControl size="small" sx={{ minWidth: 73 }}>
-          <Select
-          style={{height:"40px"}}
-            displayEmpty
-            value={quickFilter}
-            onChange={(e) => setQuickFilter(e.target.value)}
-            renderValue={(val) => {
-              if (!val) return 'All';
-              return filterOptions.find(f => f.value === val)?.label ?? 'All';
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 100 }}>
+            <Select
+              style={{ width: '90px', height: '40px' }}
+              displayEmpty
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+              renderValue={(val) =>
+                val ? bulkActions.find((a) => a.value === val)?.label ?? '' : 'No action'
+              }
+              aria-label="Bulk action"
+            >
+              <MenuItem value="">
+                <em>No action</em>
+              </MenuItem>
+              {bulkActions.map((a) => (
+                <MenuItem key={a.value} value={a.value}>
+                  {a.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button style={{height:"40px"}} variant="contained" size="small" disabled={!action} onClick={handleApply}>
+            Apply
+          </Button>
+          <Button
+            style={{ height: "40px" }}
+            startIcon={<DownloadRoundedIcon />}
+            variant="contained"
+            color="error"
+            size="small"
+            onClick={handleExport}
+          >
+            Export
+          </Button>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 73 }}>
+            <Select
+              style={{ height: "40px" }}
+              displayEmpty
+              value={quickFilter}
+              onChange={(e) => setQuickFilter(e.target.value)}
+              renderValue={(val) =>
+                !val ? 'All' : filterOptions.find((f) => f.value === val)?.label ?? 'All'
+              }
+              aria-label="Quick filter"
+            >
+              <MenuItem value=""><em>All</em></MenuItem>
+              {filterOptions.map((f) => (
+                <MenuItem key={f.value} value={f.value}>
+                  {f.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            size="small"
+            placeholder="search..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
             }}
-            aria-label="Quick filter"
+            sx={{ minWidth: 320 }}
+            aria-label="Search"
+          />
+          <Button style={{height:"40px"}} onClick={() => {navigate("testform")}} startIcon={<AddIcon />} variant="contained" size="small">
+            New
+          </Button>
+          <Button
+            style={{ height: "40px" }}
+            startIcon={<FilterListIcon />}
+            variant="contained"
+            color="error"
+            size="small"
+            onClick={() => {/* open advanced filter drawer */}}
           >
-            <MenuItem value="">
-              <em>All</em>
-            </MenuItem>
-            {filterOptions.map((f) => (
-              <MenuItem key={f.value} value={f.value}>
-                {f.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          size="small"
-          placeholder="search..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ minWidth: 320 }}
-          aria-label="Search"
-        />
-
-        <Button style={{height:"40px"}} onClick={() => {navigate("testform")}} startIcon={<AddIcon />} variant="contained" size="small">
-          New
-        </Button>
-
-        <Button
-        style={{height:"40px"}}
-          startIcon={<FilterListIcon />}
-          variant="contained"
-          color="error"
-          size="small"
-          onClick={() => {/* open advanced filter drawer */}}
-        >
-          Advanced Filter
-        </Button>
+            Advanced Filter
+          </Button>
+        </Box>
       </Box>
     </Box>
-  </Box>
-);
-
-  // base rows for variant="lab"
-  const baseRows = useMemo(
-    () => labs.map(l => ({
-      id: l.id,
-      name: l.name,
-      testCaseCounter: l.test_count,
-      bookings: l.booking_count,
-      collectors: l.collector_count,
-      status: l.status,
-    })),
-    [labs]
   );
 
-  // sorting state
+  // Use Firestore rows for table
+  const baseRows = useMemo(() => rowsFromDb, [rowsFromDb]);
+
+  // Sorting state
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState(null);
   const onSortChange = (path, dir) => {
@@ -229,7 +205,7 @@ const renderLabHeader = () => (
     setSortDir(dir);
   };
 
-  // apply sorting
+  // Apply sorting
   const rows = useMemo(() => {
     if (!sortBy || !sortDir) return baseRows.slice();
     const copy = baseRows.slice();
@@ -245,12 +221,12 @@ const renderLabHeader = () => (
     return copy;
   }, [baseRows, sortBy, sortDir]);
 
-  // selection state
+  // Selection state
   const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const allOnPageSelected = rows.length > 0 && rows.every(r => selectedIds.has(r.id));
+  const allOnPageSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
 
   const toggleOne = (id, checked) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       checked ? next.add(id) : next.delete(id);
       return next;
@@ -258,21 +234,18 @@ const renderLabHeader = () => (
   };
 
   const toggleAllOnPage = (checked) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (checked) rows.forEach(r => next.add(r.id));
-      else rows.forEach(r => next.delete(r.id));
+      if (checked) rows.forEach((r) => next.add(r.id));
+      else rows.forEach((r) => next.delete(r.id));
       return next;
     });
   };
 
   const onView = (row) => {
-    // implement your view logic
     console.log('view', row);
   };
-
   const onDelete = (row) => {
-    // implement your delete logic
     console.log('delete', row);
   };
 
@@ -282,16 +255,19 @@ const renderLabHeader = () => (
         <input type="checkbox" checked={allOnPageSelected} onChange={(e) => toggleAllOnPage(e.target.checked)} />
       </th>
       <th className="clu-th">
-        <SortHeader label="Name" path="name" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader label="Test Name" path="testName" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
       <th className="clu-th">
-        <SortHeader label="Test Category" path="testCaseCounter" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader label="Type" path="testType" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
       <th className="clu-th">
-        <SortHeader label="Labs" path="bookings" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader label="Code" path="testCode" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
       <th className="clu-th">
-        <SortHeader label="Price" path="collectors" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+        <SortHeader label="Lab" path="lab" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      </th>
+      <th className="clu-th">
+        <SortHeader label="Category" path="category" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
       </th>
       <th className="clu-th">
         <SortHeader label="Status" path="status" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
@@ -303,7 +279,7 @@ const renderLabHeader = () => (
   return (
     <CollectorListUnified
       variant=""
-      title="CollectorLab Labs"
+      title="Collector Test Case List"
       rows={rows}
       total={rows.length}
       page={1}
@@ -315,7 +291,6 @@ const renderLabHeader = () => (
       onExport={() => {}}
       headerSlot={renderLabHeader}
       renderHead={renderHead}
-      // No renderActions prop needed since we render actions inside renderRow
       renderRow={(r) => (
         <tr key={r.id}>
           <td>
@@ -325,10 +300,11 @@ const renderLabHeader = () => (
               onChange={(e) => toggleOne(r.id, e.target.checked)}
             />
           </td>
-          <td>{r.name}</td>
-          <td>{r.testCaseCounter}</td>
-          <td>{r.bookings}</td>
-          <td>{r.collectors}</td>
+          <td>{r.testName}</td>
+          <td>{r.testType}</td>
+          <td>{r.testCode}</td>
+          <td>{r.lab}</td>
+          <td>{r.category}</td>
           <td>{r.status}</td>
           <td>
             <Stack direction="row" spacing={0.5}>

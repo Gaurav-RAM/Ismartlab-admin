@@ -1,6 +1,7 @@
-// AllPrescriptions.jsx (drop-in replacement for the earlier version)
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
+import { db } from '../../firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 const theme = {
   colors: {
@@ -37,152 +38,6 @@ const GlobalStyle = createGlobalStyle`
     color: #111827;
   }
 `;
-
-export default function AllPrescriptions() {
-  const rows = [
-    {
-      id: 1,
-      customer: { name: 'John Doe', email: 'john@gmail.com' },
-      uploadedAt: '2025-03-19',
-      lab: { name: 'Precision Medical Lab', email: 'support@medlab.com' },
-      status: 'Active',
-    },
-    {
-      id: 2,
-      customer: { name: 'Robert Martin', email: 'robert@gmail.com' },
-      uploadedAt: '2025-03-19',
-      lab: { name: 'Spectrum Health Diagnostics', email: 'diagnostics@spectrum.com' },
-      status: 'Active',
-    },
-    {
-      id: 3,
-      customer: { name: 'Brian Shaw', email: 'brian@gmail.com' },
-      uploadedAt: '2025-03-19',
-      lab: { name: 'Advanced Diagnostics Lab', email: 'info@diagnostics.com' },
-      status: 'Active',
-    },
-  ];
-
-  const getInitials = (full) => {
-    const parts = full.trim().split(/\s+/);
-    return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
-  };
-
-  return (
-    <ThemeProvider theme={theme}>
-      <GlobalStyle />
-      <Page>
-        <Breadcrumb>
-          <span>Dashboard</span>
-          <Sep>›</Sep>
-          <strong>All Prescriptions</strong>
-        </Breadcrumb>
-
-        <Toolbar>
-          <LeftGroup>
-            <Select aria-label="Bulk action">
-              <option>No action</option>
-              <option>Delete</option>
-              <option>Mark as reviewed</option>
-            </Select>
-            <Button disabled>Apply</Button>
-            <DangerButton>Export</DangerButton>
-          </LeftGroup>
-
-          <RightGroup>
-            <Select aria-label="Status filter">
-              <option>All</option>
-              <option>Active</option>
-              <option>Pending</option>
-              <option>Inactive</option>
-            </Select>
-            <SearchInput placeholder="search..." />
-          </RightGroup>
-        </Toolbar>
-
-        <TableCard>
-          <TableWrapper>
-            <Table>
-              <thead>
-                <HeaderRow>
-                  <Th style={{ width: 48 }}>
-                    <Checkbox type="checkbox" aria-label="Select all" />
-                  </Th>
-                  <Th sortable>Customer</Th>
-                  <Th sortable>Uploaded At</Th>
-                  <Th sortable>Lab</Th>
-                  <Th sortable>Status</Th>
-                  <Th style={{ width: 110 }}>Action</Th>
-                </HeaderRow>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <Tr key={r.id}>
-                    <Td><Checkbox type="checkbox" aria-label={`Select ${r.customer.name}`} /></Td>
-
-                    <Td>
-                      <RowFlex>
-                        <Avatar>{getInitials(r.customer.name)}</Avatar>
-                        <TwoLine>
-                          <div className="name">{r.customer.name}</div>
-                          <EmailText>{r.customer.email}</EmailText>
-                        </TwoLine>
-                      </RowFlex>
-                    </Td>
-
-                    <Td>{r.uploadedAt}</Td>
-
-                    <Td>
-                      <RowFlex>
-                        <Avatar soft>{getInitials(r.lab.name)}</Avatar>
-                        <TwoLine>
-                          <div className="name">{r.lab.name}</div>
-                          <EmailText>{r.lab.email}</EmailText>
-                        </TwoLine>
-                      </RowFlex>
-                    </Td>
-
-                    <Td>
-                      <StatusPill $status={r.status}>{r.status}</StatusPill>
-                    </Td>
-
-                    <Td>
-                      <RowActions>
-                        <IconButton aria-label="View">👁️</IconButton>
-                        <IconButton aria-label="Delete">🗑️</IconButton>
-                      </RowActions>
-                    </Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          </TableWrapper>
-
-          <FooterBar>
-            <ShowEntries>
-              <span>Show</span>
-              <Select style={{ width: 64, marginInline: 8 }}>
-                {[5, 10, 25, 50].map(n => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </Select>
-              <span>entries</span>
-            </ShowEntries>
-
-            <ResultsText>Showing 1 to {rows.length} of {rows.length} entries</ResultsText>
-
-            <Pagination>
-              <PageButton disabled>Previous</PageButton>
-              <PageButton disabled>Next</PageButton>
-            </Pagination>
-          </FooterBar>
-        </TableCard>
-      </Page>
-    </ThemeProvider>
-  );
-}
-
-/* styled components reused/extended from earlier */
 
 const Page = styled.div`padding: ${p => p.theme.space.lg};`;
 const Breadcrumb = styled.div`
@@ -236,10 +91,6 @@ const HeaderRow = styled.tr`background: ${p => p.theme.colors.primary}; color: $
 const Th = styled.th`
   text-align: left; padding: 12px 14px; font-weight: 600; position: relative;
   ${p => p.sortable && `cursor: pointer;`}
-  ${p => p.sortable && `
-    &:after { content: ''; position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-      border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid rgba(255,255,255,.9); }
-  `}
 `;
 const Tr = styled.tr`&:nth-child(even) td { background: ${p => p.theme.colors.surface}; }`;
 const Td = styled.td`padding: 12px 14px; border-top: 1px solid ${p => p.theme.colors.border}; color: #111827;`;
@@ -287,3 +138,149 @@ const PageButton = styled.button`
   background: ${p => p.theme.colors.bg}; color: #111827; cursor: pointer;
   &:disabled { color: ${p => p.theme.colors.muted}; background: #F3F4F6; cursor: not-allowed; }
 `;
+
+function getInitials(full) {
+  const parts = (full || '').trim().split(/\s+/);
+  return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+}
+
+export default function AllPrescriptions() {
+  const [rows, setRows] = useState([]);
+
+  useEffect(() => {
+    const col = collection(db, 'prescriptions'); // Change to your collection name if needed
+    const unsub = onSnapshot(col, (snap) => {
+      setRows(
+        snap.docs.map((doc) => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            customer: {
+              name: d?.customer?.name ?? '—',
+              email: d?.customer?.email ?? '—'
+            },
+            uploadedAt: d?.uploadedAt ?? '—',
+            lab: {
+              name: d?.lab?.name ?? '—',
+              email: d?.lab?.email ?? '—'
+            },
+            status: d?.status ?? 'Inactive'
+          };
+        })
+      );
+    });
+    return unsub;
+  }, []);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <GlobalStyle />
+      <Page>
+        <Breadcrumb>
+          <span>Dashboard</span>
+          <Sep>›</Sep>
+          <strong>All Prescriptions</strong>
+        </Breadcrumb>
+
+        <Toolbar>
+          <LeftGroup>
+            <Select aria-label="Bulk action">
+              <option>No action</option>
+              <option>Delete</option>
+              <option>Mark as reviewed</option>
+            </Select>
+            <Button disabled>Apply</Button>
+            <DangerButton>Export</DangerButton>
+          </LeftGroup>
+          <RightGroup>
+            <Select aria-label="Status filter">
+              <option>All</option>
+              <option>Active</option>
+              <option>Pending</option>
+              <option>Inactive</option>
+            </Select>
+            <SearchInput placeholder="search..." />
+          </RightGroup>
+        </Toolbar>
+
+        <TableCard>
+          <TableWrapper>
+            <Table>
+              <thead>
+                <HeaderRow>
+                  <Th style={{ width: 48 }}>
+                    <Checkbox type="checkbox" aria-label="Select all" />
+                  </Th>
+                  <Th sortable>Customer</Th>
+                  <Th sortable>Uploaded At</Th>
+                  <Th sortable>Lab</Th>
+                  <Th sortable>Status</Th>
+                  <Th style={{ width: 110 }}>Action</Th>
+                </HeaderRow>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <Tr key={r.id}>
+                    <Td><Checkbox type="checkbox" aria-label={`Select ${r.customer.name}`} /></Td>
+                    <Td>
+                      <RowFlex>
+                        <Avatar>{getInitials(r.customer.name)}</Avatar>
+                        <TwoLine>
+                          <div className="name">{r.customer.name}</div>
+                          <EmailText>{r.customer.email}</EmailText>
+                        </TwoLine>
+                      </RowFlex>
+                    </Td>
+                    <Td>{r.uploadedAt}</Td>
+                    <Td>
+                      <RowFlex>
+                        <Avatar soft>{getInitials(r.lab.name)}</Avatar>
+                        <TwoLine>
+                          <div className="name">{r.lab.name}</div>
+                          <EmailText>{r.lab.email}</EmailText>
+                        </TwoLine>
+                      </RowFlex>
+                    </Td>
+                    <Td>
+                      <StatusPill $status={r.status}>{r.status}</StatusPill>
+                    </Td>
+                    <Td>
+                      <RowActions>
+                        <IconButton aria-label="View">👁️</IconButton>
+                        <IconButton aria-label="Delete">🗑️</IconButton>
+                      </RowActions>
+                    </Td>
+                  </Tr>
+                ))}
+                {rows.length === 0 && (
+                  <Tr>
+                    <Td colSpan={6} style={{ textAlign: 'center', color: '#6B7280', padding: "30px" }}>
+                      No prescriptions found
+                    </Td>
+                  </Tr>
+                )}
+              </tbody>
+            </Table>
+          </TableWrapper>
+
+          <FooterBar>
+            <ShowEntries>
+              <span>Show</span>
+              <Select style={{ width: 64, marginInline: 8 }}>
+                {[5, 10, 25, 50].map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </Select>
+              <span>entries</span>
+            </ShowEntries>
+            <ResultsText>Showing 1 to {rows.length} of {rows.length} entries</ResultsText>
+            <Pagination>
+              <PageButton disabled>Previous</PageButton>
+              <PageButton disabled>Next</PageButton>
+            </Pagination>
+          </FooterBar>
+        </TableCard>
+      </Page>
+    </ThemeProvider>
+  );
+}
