@@ -259,7 +259,7 @@ export default function CollectorBankPage() {
     URL.revokeObjectURL(url);
   };
 
-    const breadcrumbs = [{ label: 'Dashboard', to: '/' }, { label: 'Unassigned Collector List' }];
+    const breadcrumbs = [{ label: 'Dashboard', to: '/' }, { label: 'Collector Bank' }];
 
 
   // header slot per design

@@ -6,6 +6,9 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
@@ -25,6 +28,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+import Chip from '@mui/material/Chip';
 
 import { db } from '../../firebase';
 import {
@@ -36,6 +40,8 @@ import {
   writeBatch,
   doc,
   deleteDoc,
+  updateDoc,
+  documentId,
 } from 'firebase/firestore';
 
 import { AdvancedFilterDrawer } from "../../components/AdvancedFilter";
@@ -43,6 +49,27 @@ import { AdvancedFilterDrawer } from "../../components/AdvancedFilter";
 // helpers
 const getByPath = (obj, path) => path.split('.').reduce((a, k) => (a ? a[k] : undefined), obj);
 const norm = (s) => (s ?? '').toString().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+
+// visual helpers (chips)
+const OnlineChip = ({ online }) => (
+  <Chip
+    size="small"
+    label={online ? 'Online' : 'Offline'}
+    color={online ? 'success' : 'error'}
+    variant="filled"
+    sx={{ fontWeight: 600, color: '#fff' }}
+  />
+);
+
+const ActiveChip = ({ active }) => (
+  <Chip
+    size="small"
+    label={active ? 'Active' : 'Inactive'}
+    color={active ? 'success' : 'default'}
+    variant="filled"
+    sx={{ fontWeight: 600 }}
+  />
+);
 
 // table sort header
 function SortHeader({ label, path, sortBy, sortDir, onChange }) {
@@ -70,24 +97,26 @@ function SortHeader({ label, path, sortBy, sortDir, onChange }) {
   );
 }
 
-// map Firestore doc -> table row
+// map Firestore doc -> table row (aligned to your collectors schema)
 const mapDocToRow = (snap) => {
   const d = snap.data();
-  const m0 = Array.isArray(d.members) && d.members.length ? d.members[0] : null;
+  const fullName = [d.firstName, d.lastName].filter(Boolean).join(' ').trim() || d.username || '';
+  // If you have a separate presence field like d.isOnline, prefer that here; else mirror statusActive
+  const isOnline = typeof d.isOnline === 'boolean' ? d.isOnline : !!d.statusActive;
+  const isActive = !!d.statusActive;
   return {
     id: snap.id,
-    name: d.customer?.name ?? '',
-    testCaseCounter: d.lab?.name ?? '',
-    bookings: d.customer?.phone ?? d.customer?.email ?? '',
-    collectors: d.collector?.name ?? m0?.name ?? '',
-    status: d.status ?? '',
-    _collectorId: d.collector?.id ?? m0?.id ?? null,
-    _labId: d.lab?.id ?? null,
-    _testId: d.testId ?? null,
-    _paymentStatus: d.paymentStatus ?? null,
-    _submissionStatus: d.submissionStatus ?? null,
+    name: fullName,
+    testCaseCounter: d.lab ?? '',
+    bookings: d.contactNumber ?? d.email ?? '',
+    // for chip rendering
+    _isOnline: isOnline,
+    _isActive: isActive,
+    // keep textual columns for search/sort fallbacks
+    collectors: isOnline ? 'Online' : 'Offline',
+    status: isActive ? 'active' : 'inactive',
     _gender: d.gender ?? null,
-    _dateTime: d.dateTime?.toDate ? d.dateTime.toDate() : (d.createdAt?.toDate ? d.createdAt.toDate() : null),
+    _dateTime: d.updatedAt?.toDate ? d.updatedAt.toDate() : (d.createdAt?.toDate ? d.createdAt.toDate() : null),
   };
 };
 
@@ -122,40 +151,69 @@ export default function CollectorList() {
     genders: [],
   });
 
-  // equality filters shared by all queries (added gender)
+  // equality filters for collectors list
   const equalityWhere = (f) => {
     const parts = [];
-    if (f.collector) parts.push(where('collector.id', '==', f.collector));
-    if (f.lab) parts.push(where('lab.id', '==', f.lab));
-    if (f.test) parts.push(where('testId', '==', f.test));
-    if (f.payment) parts.push(where('paymentStatus', '==', f.payment));
-    if (f.status) parts.push(where('status', '==', f.status));
-    if (f.submission) parts.push(where('submissionStatus', '==', f.submission));
+    if (f.collector) parts.push(where(documentId(), '==', f.collector));
+    if (f.lab) parts.push(where('lab', '==', f.lab));
     if (f.gender) parts.push(where('gender', '==', f.gender));
+    if (f.status) parts.push(where('status', '==', f.status));
+    if (typeof f.statusActive === 'boolean') parts.push(where('statusActive', '==', f.statusActive));
     return parts;
   };
 
-  // server-side multi-field prefix search by merging per-field queries
+  // derive options helper (uses snapshots so we can access ids)
+  const deriveOptionsFromDocs = (docs) => {
+    const uniqByVal = (arr) => {
+      const m = new Map();
+      arr.forEach(x => { if (x.value && !m.has(x.value)) m.set(x.value, x); });
+      return Array.from(m.values());
+    };
+
+    const collectors = uniqByVal(docs.map(s => {
+      const d = s.data();
+      const lbl = [d.firstName, d.lastName].filter(Boolean).join(' ').trim() || d.username || 'Unknown';
+      return { value: s.id, label: lbl };
+    })).filter(x => x.value);
+
+    const labs = uniqByVal(docs.map(s => {
+      const d = s.data();
+      return { value: d.lab ?? '', label: d.lab ?? '' };
+    })).filter(x => x.value);
+
+    const genders = uniqByVal(docs.map(s => {
+      const d = s.data();
+      const g = d.gender ?? '';
+      return { value: g, label: g ? g.replace(/\b\w/g, c => c.toUpperCase()) : '' };
+    })).filter(x => x.value);
+
+    return { collectors, labs, tests: [], paymentStatus: [], status: [], submissionStatus: [], genders };
+  };
+
+  // server-side subscriptions
   useEffect(() => {
-    const colRef = collection(db, 'appointments');
+    const colRef = collection(db, 'collectors');
 
     // No search: single ordered subscription
     if (!debouncedSearch) {
-      const q = fsQuery(colRef, ...equalityWhere(appliedFilters), orderBy('dateTime', 'desc'));
+      const q = fsQuery(colRef, ...equalityWhere(appliedFilters), orderBy('updatedAt', 'desc'));
       const unsub = onSnapshot(q, (snap) => {
         setRowsFromDb(snap.docs.map(mapDocToRow));
-        setOptions(deriveOptionsFromDocs(snap.docs.map(d => d.data())));
+        setOptions(deriveOptionsFromDocs(snap.docs));
       });
       return () => unsub();
     }
 
-    // With search: run per-field prefix queries and merge, each ordered by its own searched field
-    const s = norm(debouncedSearch);
+    // With search: run per-field prefix queries and merge
+    const s = debouncedSearch;
     const fields = [
-      'customer.nameLower',
-      'lab.nameLower',
-      'collector.nameLower',
-      'testPackageLower',
+      'firstName',
+      'lastName',
+      'username',
+      'email',
+      'lab',
+      'city',
+      'state',
     ];
     const merged = new Map();
     const unsubs = fields.map((field) => {
@@ -169,38 +227,11 @@ export default function CollectorList() {
       return onSnapshot(q, (snap) => {
         snap.docs.forEach((d) => merged.set(d.id, mapDocToRow(d)));
         setRowsFromDb(Array.from(merged.values()));
-        setOptions((prev) => ({ ...prev, ...deriveOptionsFromDocs(snap.docs.map(d => d.data())) }));
+        setOptions((prev) => ({ ...prev, ...deriveOptionsFromDocs(snap.docs) }));
       });
     });
     return () => unsubs.forEach(u => u && u());
   }, [appliedFilters, debouncedSearch]);
-
-  // derive options helper (added genders)
-  const deriveOptionsFromDocs = (ds) => {
-    const uniq = (arr) => {
-      const m = new Map();
-      arr.forEach(x => { if (x.value && !m.has(x.value)) m.set(x.value, x); });
-      return Array.from(m.values());
-    };
-    const collectors = uniq(ds.map(d => ({
-      value: d.collector?.id ?? (d.members?.[0]?.id ?? ''),
-      label: d.collector?.name ?? (d.members?.[0]?.name ?? '')
-    }))).filter(x => x.value);
-
-    const labs = uniq(ds.map(d => ({ value: d.lab?.id ?? '', label: d.lab?.name ?? '' }))).filter(x => x.value);
-
-    const tests = uniq(ds.map(d => ({
-      value: d.testId ?? '',
-      label: d.testPackage ?? d.testType ?? ''
-    }))).filter(x => x.value);
-
-    const paymentStatus = uniq(ds.map(d => ({ value: d.paymentStatus ?? '', label: d.paymentStatus ?? '' }))).filter(x => x.value);
-    const status = uniq(ds.map(d => ({ value: d.status ?? '', label: d.status ?? '' }))).filter(x => x.value);
-    const submissionStatus = uniq(ds.map(d => ({ value: d.submissionStatus ?? '', label: d.submissionStatus ?? '' }))).filter(x => x.value);
-    const genders = uniq(ds.map(d => ({ value: d.gender ?? '', label: (d.gender ?? '').replace(/\b\w/g, c => c.toUpperCase()) }))).filter(x => x.value);
-
-    return { collectors, labs, tests, paymentStatus, status, submissionStatus, genders };
-  };
 
   // quick filter (client)
   const afterQuick = useMemo(() => {
@@ -224,21 +255,32 @@ export default function CollectorList() {
     return list;
   }, [afterQuick, sortBy, sortDir]);
 
-  // bulk Apply to visible rows
-  const BULK_UPDATES = { enable: { status: 'active' }, disable: { status: 'inactive' } };
+  // bulk Apply to visible rows (toggle statusActive)
+  const BULK_UPDATES = { enable: { statusActive: true }, disable: { statusActive: false } };
   const handleApply = async () => {
     if (!action) return alert('Select an action first.');
     const updates = BULK_UPDATES[action];
     if (!updates) return alert('Unknown action.');
     try {
       const batch = writeBatch(db);
-      rows.forEach(r => batch.update(doc(db, 'appointments', r.id), updates));
+      rows.forEach(r => batch.update(doc(db, 'collectors', r.id), updates));
       await batch.commit();
       setAction('');
       alert('Bulk update applied to visible rows.');
     } catch (e) {
       console.error(e);
       alert('Failed to apply bulk update.');
+    }
+  };
+
+  // single toggle active
+  const handleToggleActive = async (r) => {
+    try {
+      const ref = doc(db, 'collectors', r.id);
+      await updateDoc(ref, { statusActive: !r._isActive });
+    } catch (e) {
+      console.error(e);
+      alert('Failed to toggle active status.');
     }
   };
 
@@ -251,8 +293,8 @@ export default function CollectorList() {
         (r.name ?? '').replace(/,/g,' '),
         (r.testCaseCounter ?? '').replace(/,/g,' '),
         (r.bookings ?? '').replace(/,/g,' '),
-        (r.collectors ?? '').replace(/,/g,' '),
-        (r.status ?? '').replace(/,/g,' ')
+        ((r._isOnline ? 'Online' : 'Offline') ?? '').replace(/,/g,' '),
+        ((r._isActive ? 'Active' : 'Inactive') ?? '').replace(/,/g,' ')
       ].join(','))
     ];
     const csv = lines.join('\n');
@@ -329,7 +371,7 @@ export default function CollectorList() {
           <TextField
             style={{ height:"40px" }}
             size="small"
-            placeholder="search by customer/lab/collector/test..."
+            placeholder="search by name/username/email/lab..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon /></InputAdornment>) }}
@@ -388,20 +430,50 @@ export default function CollectorList() {
             <td>{r.name}</td>
             <td>{r.testCaseCounter}</td>
             <td>{r.bookings}</td>
-            <td>{r.collectors}</td>
-            <td>{r.status}</td>
+            <td><OnlineChip online={r._isOnline} /></td>
+            <td><ActiveChip active={r._isActive} /></td>
             <td>
               <Stack direction="row" spacing={0.5}>
-                <Tooltip title="View">
-                  <IconButton size="small" color="primary" aria-label="view" onClick={() => navigate(`/appointments/view/${r.id}`)}>
+                <Tooltip title="Edit">
+                  <IconButton
+                    size="small"
+                    color="success"
+                    aria-label="edit"
+                    onClick={() => navigate(`/collectors/edit/${r.id}`)}
+                  >
                     <EditOutlinedIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
+                <Tooltip title="View">
+                  <IconButton
+                    size="small"
+                    color="info"
+                    aria-label="view"
+                    onClick={() => navigate(`/collectors/view/${r.id}`)}
+                  >
+                    <VisibilityOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title={r._isActive ? 'Disable' : 'Enable'}>
+                  <IconButton
+                    size="small"
+                    color="warning"
+                    aria-label="toggle-active"
+                    onClick={() => handleToggleActive(r)}
+                  >
+                    {r._isActive ? <LockOutlinedIcon fontSize="small" /> : <LockOpenOutlinedIcon fontSize="small" />}
+                  </IconButton>
+                </Tooltip>
                 <Tooltip title="Delete">
-                  <IconButton size="small" color="error" aria-label="delete" onClick={async () => {
-                    if (!window.confirm('Delete this record?')) return;
-                    await deleteDoc(doc(db, 'appointments', r.id));
-                  }}>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    aria-label="delete"
+                    onClick={async () => {
+                      if (!window.confirm('Delete this record?')) return;
+                      await deleteDoc(doc(db, 'collectors', r.id));
+                    }}
+                  >
                     <DeleteOutlineIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>

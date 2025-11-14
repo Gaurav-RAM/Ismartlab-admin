@@ -1,10 +1,20 @@
 // src/pages/collectors/CollectorDocumentCreate.jsx
-import React, { useRef, useState } from 'react';
-import "./collectorcommon.css";
+import React, { useEffect, useRef, useState } from 'react';
+import './collectorcommon.css';
+
+// Routing
+import { useParams, useNavigate } from 'react-router-dom';
 
 // Firestore only
 import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  updateDoc,
+} from 'firebase/firestore';
 
 function Toggle({ checked, onChange, ariaLabel }) {
   return (
@@ -16,12 +26,19 @@ function Toggle({ checked, onChange, ariaLabel }) {
 }
 
 export default function CollectorDocumentForm() {
+  const { id } = useParams();           // if present => edit mode
+  const isEdit = Boolean(id);
+  const navigate = useNavigate();
+
   // controlled form state
   const [collectorId, setCollectorId] = useState('');
   const [documentType, setDocumentType] = useState('');
   const [isVerified, setIsVerified] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [file, setFile] = useState(null);
+
+  // store existing file metadata when editing
+  const [fileMetaDb, setFileMetaDb] = useState({ fileName: null, fileType: null, fileSize: null });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -41,6 +58,38 @@ export default function CollectorDocumentForm() {
 
   const onChooseFile = () => fileRef.current?.click();
 
+  // Load existing document for edit
+  useEffect(() => {
+    if (!isEdit) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const ref = doc(db, 'collector_documents', id);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          alert('Document not found');
+          navigate(-1);
+          return;
+        }
+        const d = snap.data();
+        if (!mounted) return;
+        setCollectorId(d.collectorId ?? '');
+        setDocumentType(d.documentType ?? '');
+        setIsVerified(!!d.isVerified);
+        setIsActive(!!d.isActive);
+        setFileMetaDb({
+          fileName: d.fileName ?? null,
+          fileType: d.fileType ?? null,
+          fileSize: d.fileSize ?? null,
+        });
+      } catch (e) {
+        console.error(e);
+        setError('Failed to load document');
+      }
+    })();
+    return () => { mounted = false; };
+  }, [isEdit, id, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -48,27 +97,41 @@ export default function CollectorDocumentForm() {
 
     try {
       // Only metadata; no Storage
-      const fileMeta = file
+      const chosenMeta = file
         ? { fileName: file.name, fileType: file.type || null, fileSize: file.size ?? null }
-        : { fileName: null, fileType: null, fileSize: null };
+        : fileMetaDb || { fileName: null, fileType: null, fileSize: null };
 
-      await addDoc(collection(db, 'collector_documents'), {
+      const base = {
         collectorId,
         documentType,
         isVerified,
         isActive,
-        ...fileMeta,
-        createdAt: serverTimestamp(),
-      });
+        ...chosenMeta,
+      };
 
-      // reset form
-      setCollectorId('');
-      setDocumentType('');
-      setIsVerified(false);
-      setIsActive(true);
-      setFile(null);
-      if (fileRef.current) fileRef.current.value = '';
-      alert('Saved successfully');
+      if (isEdit) {
+        await updateDoc(doc(db, 'collector_documents', id), {
+          ...base,
+          updatedAt: serverTimestamp(),
+        });
+        alert('Updated successfully');
+        navigate("/collectors/document");
+      } else {
+        await addDoc(collection(db, 'collector_documents'), {
+          ...base,
+          createdAt: serverTimestamp(),
+        });
+
+        // reset form
+        setCollectorId('');
+        setDocumentType('');
+        setIsVerified(false);
+        setIsActive(true);
+        setFile(null);
+        setFileMetaDb({ fileName: null, fileType: null, fileSize: null });
+        if (fileRef.current) fileRef.current.value = '';
+        alert('Saved successfully');
+      }
     } catch (err) {
       console.error(err);
       setError('Failed to save document');
@@ -80,8 +143,8 @@ export default function CollectorDocumentForm() {
   return (
     <div className="page">
       <div className="page-head">
-        <div className="breadcrumbs">Dashboard › New Collector Document</div>
-        <button className="clu-btn outline" onClick={() => window.history.back()}>
+        <div className="breadcrumbs">Dashboard › {isEdit ? 'Edit Collector Document' : 'New Collector Document'}</div>
+        <button className="clu-btn outline" onClick={() => navigate(-1)}>
           ‹ Back
         </button>
       </div>
@@ -104,9 +167,7 @@ export default function CollectorDocumentForm() {
               >
                 <option value="">Select Collector</option>
                 {collectors.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
               <span className="chev">▾</span>
@@ -134,9 +195,7 @@ export default function CollectorDocumentForm() {
               >
                 <option value="">Select Document</option>
                 {documents.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.label}
-                  </option>
+                  <option key={d.id} value={d.id}>{d.label}</option>
                 ))}
               </select>
               <span className="chev">▾</span>
@@ -170,7 +229,11 @@ export default function CollectorDocumentForm() {
               <button type="button" className="clu-btn" onClick={onChooseFile}>
                 Choose File
               </button>
-              <span className="file-name">{file ? file.name : 'No file chosen'}</span>
+              <span className="file-name">
+                {file
+                  ? file.name
+                  : (fileMetaDb?.fileName || 'No file chosen')}
+              </span>
               <input
                 ref={fileRef}
                 type="file"
@@ -186,7 +249,7 @@ export default function CollectorDocumentForm() {
 
         <div className="actions">
           <button type="submit" className="clu-btn primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? (isEdit ? 'Updating...' : 'Saving...') : (isEdit ? 'Update' : 'Save')}
           </button>
         </div>
       </form>

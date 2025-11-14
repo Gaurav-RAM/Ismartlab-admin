@@ -404,13 +404,8 @@ export default function CollectorLab() {
           </td>
           <td>
             <Stack direction="row" spacing={0.5}>
-              <Tooltip title="View">
-                <IconButton size="small" color="primary" aria-label="view" onClick={() => navigate(`/collector-docs/view/${r.id}`)}>
-                  <VisibilityOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
               <Tooltip title="Edit">
-                <IconButton size="small" color="primary" aria-label="edit" onClick={() => navigate(`/collector-docs/edit/${r.id}`)}>
+                <IconButton size="small" color="primary" aria-label="edit" onClick={() => navigate(`/collectors/documents/edit/${r.id}`)}>
                   <EditOutlinedIcon fontSize="small" />
                 </IconButton>
               </Tooltip>

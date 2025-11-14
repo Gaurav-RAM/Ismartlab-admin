@@ -34,6 +34,11 @@ import CashPaymentList from "./pages/FinancialManagement/CashPaymentList.jsx";
 import Coupans from "./pages/FinancialManagement/Coupans.jsx";
 import TopBookTestCase from "./pages/report/TopBookTestCase.jsx";
 import AppointmentViewPage from "./pages/appointments/AppointmentViewPage.jsx";
+import HelpDesks from "./pages/helpdeskmanagement/HelpDesks.jsx";
+import HelpDeskForm from "./pages/helpdeskmanagement/HelpDeskForm.jsx";
+import HelpdeskDetailPage from "./pages/helpdeskmanagement/HelpDeskView.jsx";
+import Earnings from "./pages/FinancialManagement/Earnings.jsx";
+
 
 export default function App() {
   return (
@@ -72,52 +77,49 @@ export default function App() {
             path="/collectors/document/form"
             element={<CollectorDocumentForm />}
           />
-
+          <Route path="/collectors/documents/edit/:id" element={<CollectorDocumentForm />} />
           <Route path="/topbook" element={<TopBookTestCase />} />
-
           <Route path="/labs" element={<CollectorLab />} />
-
           <Route path="/labs/form" element={<CollectorLabForm />} />
           <Route path="/labsession" element={<CollectorLabSessionPage />} />
-
           <Route
             path="/labsession/session"
             element={<CollectorLabSessionForm />}
           />
-
           <Route path="/testcases" element={<CollectorTestCaseList />} />
-
+          <Route path="/collectors/edit/:id" element={<CreateCollectorForm />} />
           <Route
             path="/testcases/testform"
             element={<CollectorTestCaseForm />}
           />
 
+          <Route
+            path="/testcases/edit/:id"
+            element={<CollectorTestCaseForm />}
+          />
           <Route path="/testpackages" element={<CollectorTestPackages />} />
-
           <Route
             path="/testpackages/packageform"
             element={<CollectorPackagesForm />}
           />
-
           <Route path="/prescriptions" element={<CollectorPrescription />} />
-
           <Route
             path="/pendingpres"
             element={<CollectorPendingPrescription />}
           />
           <Route path="/paymentlist" element={<PaymentList />} />
-
           <Route path="/cashpaymentlist" element={<CashPaymentList />} />
-
           <Route path="/payouts" element={<Payouts />} />
-
           <Route path="/coupans" element={<Coupans />} />
-
+          <Route path="/earnings" element={<Earnings />} />
           <Route path="/reviews" element={<CollectorReviews />} />
-
           <Route path="/collectors" element={<Collectors />} />
           <Route path="/labs" element={<Labs />} />
           <Route path="/test-cases" element={<TestCases />} />
+          <Route path="/helpdesks" element={<HelpDesks />} />
+          <Route path="/helpdesks/hform" element={<HelpDeskForm />} />
+         <Route path="/helpdesks/view/:id" element={<HelpdeskDetailPage />} />
+          
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

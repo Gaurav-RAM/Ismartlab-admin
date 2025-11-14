@@ -1,4 +1,3 @@
-// src/pages/labs/CollectorLab.jsx
 import React, { useState, useMemo, useEffect } from 'react';
 import CollectorListUnified from '../../components/CollectorListUnified';
 import Box from '@mui/material/Box';

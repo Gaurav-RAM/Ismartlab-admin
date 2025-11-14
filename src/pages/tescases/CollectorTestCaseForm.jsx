@@ -1,13 +1,22 @@
-// CollectorTestCaseForm.jsx
-import React, { useState, useRef } from 'react';
+// src/pages/collectors/CollectorTestCaseForm.jsx
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore';
+import { useNavigate, useParams } from 'react-router-dom';
 
+/* ---------- styles (unchanged) ---------- */
 const Global = createGlobalStyle`
   :root{
     --bg:#f6f7fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280;
@@ -17,7 +26,6 @@ const Global = createGlobalStyle`
   * { box-sizing: border-box; }
   body { margin:0; font-family: Inter, system-ui, Arial, sans-serif; color:var(--ink); background:var(--bg); }
 `;
-
 const Page = styled.div` padding: 28px; max-width: 1280px; margin: 0 auto; `;
 const HeaderBar = styled.div` display:flex; justify-content: space-between; align-items: center; margin-bottom: 18px; `;
 const Title = styled.h1` font-size: 22px; margin: 0; font-weight: 600; `;
@@ -73,6 +81,7 @@ const Switch = styled.label`
 `;
 const FooterBar = styled.div` display:flex; justify-content:flex-end; gap: 10px; padding: 10px 0 2px; `;
 
+/* ---------- quill ---------- */
 const quillModules = {
   toolbar: [
     [{ header: [1,2,3,4,5,6,false] }],
@@ -90,9 +99,16 @@ const quillFormats = [
   'script','list','bullet','indent','align','link','blockquote','code-block'
 ];
 
+/* ---------- collection + helpers ---------- */
+const COLLECTION = 'collector_test_cases';
+const lc = (s) => (s ?? '').toString().trim().toLowerCase();
+
 export default function CollectorTestCaseForm(){
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
 
+  // state
   const [testName, setTestName] = useState('');
   const [testCode, setTestCode] = useState('');
   const [category, setCategory] = useState('');
@@ -116,7 +132,9 @@ export default function CollectorTestCaseForm(){
   const [homeCollection, setHomeCollection] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  // image picker
   const onPickImage = () => imgRef.current?.click();
   const onImageChange = (e) => {
     const file = e.target.files?.[0];
@@ -139,6 +157,7 @@ export default function CollectorTestCaseForm(){
     setImagePreview(URL.createObjectURL(file));
   };
 
+  // reset
   const resetAll = () => {
     setTestName(''); setTestCode(''); setCategory(''); setTestType('');
     setDescription(''); setGeneralNotes(''); setInstructions(''); setSpecimenDetails('');
@@ -146,6 +165,94 @@ export default function CollectorTestCaseForm(){
     setRefLink(''); setPdfFile(null); if (pdfRef.current) pdfRef.current.value = '';
     setActive(true); setHomeCollection(false); setFeatured(false);
     setImageFile(null); setImagePreview(''); setImgError(''); if (imgRef.current) imgRef.current.value = '';
+  };
+
+  // load for edit
+  useEffect(() => {
+    if (!isEdit) return;
+    (async () => {
+      try {
+        setLoading(true);
+        const ref = doc(db, COLLECTION, id);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          alert('Document not found');
+          navigate('/test-cases');
+          return;
+        }
+        const d = snap.data();
+        setTestName(d.testName ?? d.test?.name ?? '');
+        setTestCode(d.testCode ?? d.test?.code ?? '');
+        setCategory(d.category ?? d.category?.name ?? '');
+        setTestType(d.testType ?? d.test?.type ?? '');
+        setDescription(d.description ?? '');
+        setGeneralNotes(d.generalNotes ?? '');
+        setInstructions(d.instructions ?? '');
+        setSpecimenDetails(d.specimenDetails ?? '');
+        setSection(d.details?.section ?? '');
+        setLab(d.details?.lab ?? d.lab?.name ?? '');
+        setHostIp(d.details?.hostIp ?? '');
+        setRequestTime(d.details?.requestTime ?? '');
+        setRefLink(d.attachments?.referenceLink ?? '');
+        // existing file names (no upload on Spark)
+        if (d.image?.name) setImagePreview(''); // no URL available, keep blank
+        setActive(Boolean(d.flags?.active ?? d.active ?? true));
+        setHomeCollection(Boolean(d.flags?.homeCollection ?? false));
+        setFeatured(Boolean(d.flags?.featured ?? false));
+      } catch (e) {
+        console.error(e);
+        alert('Failed to load document');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [isEdit, id, navigate]);
+
+  // build payload (shared for add/update)
+  const buildPayload = () => {
+    const imageMeta = imageFile ? { name: imageFile.name } : null;
+    const pdfMeta = pdfFile ? { name: pdfFile.name } : null;
+
+    // lowercase fields for case-insensitive prefix search
+    const testName_lc = lc(testName);
+    const labName_lc = lc(lab);
+    const categoryName_lc = lc(category);
+    const searchKeys_lc = [testName, lab, category].filter(Boolean).map(lc).join(' | ');
+
+    // include optional nested maps for compatibility
+    return {
+      testName: testName.trim(),
+      testCode: testCode.trim(),
+      category,
+      testType,
+      description,
+      generalNotes,
+      instructions,
+      specimenDetails,
+      details: {
+        section,
+        lab,
+        hostIp,
+        requestTime: requestTime || null,
+      },
+      attachments: {
+        instructionPdfName: pdfMeta?.name || null,
+        referenceLink: refLink.trim() || null,
+      },
+      image: imageMeta,
+      flags: { active, homeCollection, featured },
+
+      // derived fields for search
+      testName_lc,
+      labName_lc,
+      categoryName_lc,
+      searchKeys_lc,
+
+      // helpful nested mirrors
+      test: { name: testName.trim(), code: testCode.trim(), type: testType || null },
+      lab: lab ? { name: lab } : null,
+      categoryObj: category ? { name: category } : null,
+    };
   };
 
   const handleSave = async () => {
@@ -156,38 +263,17 @@ export default function CollectorTestCaseForm(){
     }
     setSaving(true);
     try {
-      // Only meta, no actual file upload (Spark plan limitation)
-      let imageMeta = imageFile ? { name: imageFile.name } : null;
-      let pdfMeta = pdfFile ? { name: pdfFile.name } : null;
-
-      const payload = {
-        testName: testName.trim(),
-        testCode: testCode.trim(),
-        category,
-        testType,
-        description,
-        generalNotes,
-        instructions,
-        specimenDetails,
-        details: {
-          section,
-          lab,
-          hostIp,
-          requestTime: requestTime || null,
-        },
-        attachments: {
-          instructionPdfName: pdfMeta?.name || null,
-          referenceLink: refLink.trim() || null,
-        },
-        image: imageMeta,
-        flags: { active, homeCollection, featured },
-        createdAt: serverTimestamp(),
-      };
-
-      // Changed collection name to "filso"
-      await addDoc(collection(db, 'filso'), payload);
-      resetAll();
-      navigate('/CollectorTestCaseList');
+      const payload = buildPayload();
+      if (isEdit) {
+        const ref = doc(db, COLLECTION, id);
+        await updateDoc(ref, { ...payload, updatedAt: serverTimestamp() });
+      } else {
+        await addDoc(collection(db, COLLECTION), {
+          ...payload,
+          createdAt: serverTimestamp(),
+        });
+      }
+      navigate('/testcases');
     } catch (e) {
       console.error(e);
       alert('Failed to save. Please try again.');
@@ -196,17 +282,19 @@ export default function CollectorTestCaseForm(){
     }
   };
 
+  /* ---------- UI ---------- */
   return (
     <>
       <Global />
       <Page>
         <HeaderBar>
-          <Title>Collector • Add Test Case</Title>
+          <Title>Collector • {isEdit ? 'Edit Test Case' : 'Add Test Case'}</Title>
           <Actions>
-            <Button $variant="ghost" onClick={resetAll}>Reset</Button>
-            <Button $variant="primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
+            {!isEdit && <Button $variant="ghost" onClick={resetAll}>Reset</Button>}
+            <Button $variant="primary" onClick={handleSave} disabled={saving || loading}>
+              {saving ? (isEdit ? 'Updating…' : 'Saving…') : (isEdit ? 'Update' : 'Save')}
             </Button>
+            <Button $variant="ghost" onClick={()=>navigate('/test-cases')}>Back</Button>
           </Actions>
         </HeaderBar>
 
@@ -221,8 +309,8 @@ export default function CollectorTestCaseForm(){
                   <UploadBox
                     role="button"
                     tabIndex={0}
-                    onClick={onPickImage}
-                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onPickImage()}
+                    onClick={()=>!loading && onPickImage()}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !loading && onPickImage()}
                     title="Click to upload"
                   >
                     {imagePreview ? (
@@ -244,6 +332,7 @@ export default function CollectorTestCaseForm(){
                     accept="image/png,image/jpeg"
                     style={{ display: 'none' }}
                     onChange={onImageChange}
+                    disabled={loading}
                   />
                   {imgError ? <small style={{ color: 'var(--danger)' }}>{imgError}</small> : null}
                 </Field>
@@ -253,19 +342,19 @@ export default function CollectorTestCaseForm(){
                   <Col $span={6}>
                     <Field>
                       <Label>Test Name</Label>
-                      <Input placeholder="Enter test name" value={testName} onChange={e => setTestName(e.target.value)} />
+                      <Input placeholder="Enter test name" value={testName} onChange={e => setTestName(e.target.value)} disabled={loading} />
                     </Field>
                   </Col>
                   <Col $span={6}>
                     <Field>
                       <Label>Test Code</Label>
-                      <Input placeholder="Unique code" value={testCode} onChange={e => setTestCode(e.target.value)} />
+                      <Input placeholder="Unique code" value={testCode} onChange={e => setTestCode(e.target.value)} disabled={loading} />
                     </Field>
                   </Col>
                   <Col $span={6}>
                     <Field>
                       <Label>Category</Label>
-                      <Select value={category} onChange={e => setCategory(e.target.value)}>
+                      <Select value={category} onChange={e => setCategory(e.target.value)} disabled={loading}>
                         <option value="">Select category</option>
                         <option>Hematology</option>
                         <option>Biochemistry</option>
@@ -276,7 +365,7 @@ export default function CollectorTestCaseForm(){
                   <Col $span={6}>
                     <Field>
                       <Label>Test Type</Label>
-                      <Select value={testType} onChange={e => setTestType(e.target.value)}>
+                      <Select value={testType} onChange={e => setTestType(e.target.value)} disabled={loading}>
                         <option value="">Select type</option>
                         <option>Manual</option>
                         <option>Automated</option>
@@ -304,10 +393,6 @@ export default function CollectorTestCaseForm(){
           </CardBody>
         </Card>
 
-        {/* The rest of the form remains unchanged */}
-        {/* ... (sections for Test Details, Additional Information, Attachments, and Settings) ... */}
-        {/* Copy everything below here unchanged from your original code */}
-
         {/* Test Details */}
         <Card>
           <CardHead><h3>Test Details</h3></CardHead>
@@ -315,14 +400,14 @@ export default function CollectorTestCaseForm(){
             <Grid>
               <Col $span={6}>
                 <Field>
-                  <Label>Category</Label>
-                  <Input placeholder="Enter category or section" value={section} onChange={e=>setSection(e.target.value)} />
+                  <Label>Category/Section</Label>
+                  <Input placeholder="Enter category or section" value={section} onChange={e=>setSection(e.target.value)} disabled={loading} />
                 </Field>
               </Col>
               <Col $span={6}>
                 <Field>
                   <Label>Lab</Label>
-                  <Select value={lab} onChange={e=>setLab(e.target.value)}>
+                  <Select value={lab} onChange={e=>setLab(e.target.value)} disabled={loading}>
                     <option value="">Select lab</option>
                     <option>Central Lab</option>
                     <option>Satellite Lab</option>
@@ -332,13 +417,13 @@ export default function CollectorTestCaseForm(){
               <Col $span={6}>
                 <Field>
                   <Label>Host/IP</Label>
-                  <Input placeholder="e.g., 10.0.0.12" value={hostIp} onChange={e=>setHostIp(e.target.value)} />
+                  <Input placeholder="e.g., 10.0.0.12" value={hostIp} onChange={e=>setHostIp(e.target.value)} disabled={loading} />
                 </Field>
               </Col>
               <Col $span={6}>
                 <Field>
                   <Label>Test Request Time</Label>
-                  <Input type="datetime-local" value={requestTime} onChange={e=>setRequestTime(e.target.value)} />
+                  <Input type="datetime-local" value={requestTime} onChange={e=>setRequestTime(e.target.value)} disabled={loading} />
                 </Field>
               </Col>
             </Grid>
@@ -401,7 +486,7 @@ export default function CollectorTestCaseForm(){
 
         {/* Attachments */}
         <Card $span={12}>
-          <CardHead><h3>Test Guidlines PDF</h3></CardHead>
+          <CardHead><h3>Test Guidelines PDF</h3></CardHead>
           <CardBody>
             <Grid>
               <Col $span={6}>
@@ -412,6 +497,7 @@ export default function CollectorTestCaseForm(){
                     type="file"
                     accept=".pdf"
                     onChange={e=>setPdfFile(e.target.files?.[0] || null)}
+                    disabled={loading}
                   />
                   <small>Upload any supporting document</small>
                 </Field>
@@ -419,7 +505,7 @@ export default function CollectorTestCaseForm(){
               <Col $span={6}>
                 <Field>
                   <Label>Reference Link</Label>
-                  <Input placeholder="https://..." value={refLink} onChange={e=>setRefLink(e.target.value)} />
+                  <Input placeholder="https://..." value={refLink} onChange={e=>setRefLink(e.target.value)} disabled={loading} />
                 </Field>
               </Col>
             </Grid>
@@ -463,9 +549,9 @@ export default function CollectorTestCaseForm(){
               </Col>
             </Grid>
             <FooterBar>
-              <Button $variant="ghost" onClick={() => { /* stay on page */ }}>Cancel</Button>
-              <Button $variant="primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Submit'}
+              <Button $variant="ghost" onClick={() => navigate('/test-cases')}>Cancel</Button>
+              <Button $variant="primary" onClick={handleSave} disabled={saving || loading}>
+                {saving ? (isEdit ? 'Updating…' : 'Submitting…') : (isEdit ? 'Update' : 'Submit')}
               </Button>
             </FooterBar>
           </CardBody>

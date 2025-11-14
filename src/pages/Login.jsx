@@ -6,7 +6,6 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 
 const demos = [
-  { label: 'admin@gmail.com', email: 'admin@gmail.com', password: '12345678' },
   { label: 'vendor@gmail.com', email: 'vendor@gmail.com', password: '12345678' },
 ];
 
