@@ -1,23 +1,44 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled, { ThemeProvider, createGlobalStyle } from "styled-components";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
 // Firestore
-import { db } from "../../firebase.js"; // adjust if needed
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../firebase.js";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  updateDoc,
+} from "firebase/firestore";
 
 // Router
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-/* ------------ Theme + Global Styles (unchanged) ------------ */
-const theme = { /* ... keep your theme as-is ... */ 
-  colors: { bg: "#f5f6f8", card: "#ffffff", text: "#111827", muted: "#6b7280", primary: "#3b82f6", border: "#e5e7eb", line: "#e5e7eb", focus: "rgba(59,130,246,0.35)", success: "#16a34a", danger: "#ef4444" },
+/* ------------ Theme + Global Styles ------------ */
+const theme = {
+  colors: {
+    bg: "#f5f6f8",
+    card: "#ffffff",
+    text: "#111827",
+    muted: "#6b7280",
+    primary: "#3b82f6",
+    border: "#e5e7eb",
+    line: "#e5e7eb",
+    focus: "rgba(59,130,246,0.35)",
+    success: "#16a34a",
+    danger: "#ef4444",
+  },
   radius: { sm: "6px", md: "10px", lg: "12px" },
   shadow: { sm: "0 1px 2px rgba(0,0,0,0.04)", md: "0 6px 18px rgba(17,24,39,0.08)" },
   space: (n) => `${4 * n}px`,
-  font: { base: "'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" },
-//   gridGap: "16px",
+  font: {
+    base:
+      "'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+  },
+  gridGap: "16px",
 };
 
 const GlobalStyle = createGlobalStyle`
@@ -27,9 +48,9 @@ const GlobalStyle = createGlobalStyle`
   :focus-visible { outline: 2px solid ${p => p.theme.colors.primary}; outline-offset: 2px; }
 `;
 
-/* ------------ Styled components (unchanged) ------------ */
+/* ------------ Styled components ------------ */
 const Page = styled.div`min-height: 100%; padding: ${p => p.theme.space(8)}; display: flex; justify-content: center;`;
-const Frame = styled.div`width: 100%};`;
+const Frame = styled.div`width: 100%;`;
 const Card = styled.div`background: ${p => p.theme.colors.card}; border: 1px solid ${p => p.theme.colors.border}; border-radius: ${p => p.theme.radius.lg}; box-shadow: ${p => p.theme.shadow.md};`;
 const HeaderRow = styled.div`display: flex; align-items: center; justify-content: space-between; padding: ${p => p.theme.space(5)} ${p => p.theme.space(6)}; border-bottom: 1px solid ${p => p.theme.colors.line};`;
 const Title = styled.h2`margin: 0; font-size: 20px; font-weight: 600;`;
@@ -84,9 +105,11 @@ const QuillEditor = styled(ReactQuill)`
   .ql-container { border: 1px solid ${p => p.theme?.colors?.border ?? "#e5e7eb"}; border-top: none; border-radius: 0 0 ${p => p.theme?.radius?.sm ?? "6px"} ${p => p.theme?.radius?.sm ?? "6px"}; min-height: 160px; background: #fff; }
 `;
 
-/* ------------ Component ------------ */
+/* ------------ Component (Create + Edit) ------------ */
 export default function CollectorLabForm() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
 
   const fileInput = useRef(null);
 
@@ -122,7 +145,13 @@ export default function CollectorLabForm() {
   const [paymentMode, setPaymentMode] = useState("Manual");
   const [logoFile, setLogoFile] = useState(null);
 
+  // Existing filenames (to preserve on edit when no new file chosen)
+  const [logoName, setLogoName] = useState("");
+  const [licenseFileName, setLicenseFileName] = useState("");
+  const [accreditationFileName, setAccreditationFileName] = useState("");
+
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const resetAll = () => {
     setActive(true);
@@ -148,8 +177,60 @@ export default function CollectorLabForm() {
     setAccreditationExpiry("");
     setPaymentMode("Manual");
     setLogoFile(null);
-    if (fileInput.current) fileInput.current.value = ""; // clears hidden logo input
+    setLogoName("");
+    setLicenseFileName("");
+    setAccreditationFileName("");
+    if (fileInput.current) fileInput.current.value = "";
   };
+
+  // Load existing doc in edit mode
+  useEffect(() => {
+    const load = async () => {
+      if (!isEdit || !id) return;
+      setLoading(true);
+      try {
+        const snap = await getDoc(doc(db, "labs", id));
+        if (!snap.exists()) {
+          alert("Lab not found");
+          navigate("/labs");
+          return;
+        }
+        const d = snap.data() || {};
+        setActive(Boolean(d.active));
+        setDesc(d.desc || "");
+        setLabName(d.labName || "");
+        setLabCode(d.labCode || "");
+        setTax(d.tax || "");
+        setTaxId(d.taxId || "");
+        setPhone(d.phone || "");
+        setEmail(d.email || "");
+        setTimeSlot(d.timeSlot || "");
+        setAddr1(d.address?.line1 || "");
+        setAddr2(d.address?.line2 || "");
+        setCountry(d.address?.country || "");
+        setStateName(d.address?.state || "");
+        setCity(d.address?.city || "");
+        setPostal(d.address?.postal || "");
+        setLicenseNumber(d.license?.number || "");
+        setLicenseExpiry(d.license?.expiry || "");
+        setAccreditationType(d.accreditation?.type || "");
+        setAccreditationExpiry(d.accreditation?.expiry || "");
+        setPaymentMode(d.paymentMode || "Manual");
+
+        // preserve existing filenames for display/fallback
+        setLogoName(d.logoFileName || "");
+        setLicenseFileName(d.license?.fileName || "");
+        setAccreditationFileName(d.accreditation?.fileName || "");
+      } catch (e) {
+        console.error(e);
+        alert("Failed to load lab");
+        navigate("/labs");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [isEdit, id, navigate]);
 
   const handleSave = async () => {
     if (saving) return;
@@ -179,24 +260,32 @@ export default function CollectorLabForm() {
 
         license: {
           number: licenseNumber.trim(),
-          fileName: licenseFile?.name || null,
+          fileName: licenseFile?.name ?? (licenseFileName || null),
           expiry: licenseExpiry || null,
         },
 
         accreditation: {
           type: accreditationType,
-          fileName: accreditationFile?.name || null,
+          fileName: accreditationFile?.name ?? (accreditationFileName || null),
           expiry: accreditationExpiry || null,
         },
 
-        logoFileName: logoFile?.name || null,
+        logoFileName: logoFile?.name ?? (logoName || null),
         paymentMode,
-
-        createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, "labs"), payload);
-      resetAll();
+      if (isEdit && id) {
+        await updateDoc(doc(db, "labs", id), {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, "labs"), {
+          ...payload,
+          createdAt: serverTimestamp(),
+        });
+        resetAll();
+      }
       navigate("/labs");
     } catch (e) {
       console.error(e);
@@ -211,20 +300,22 @@ export default function CollectorLabForm() {
       <GlobalStyle />
       <Page>
         <Frame>
-          <Card aria-label="New Lab">
+          <Card aria-label={isEdit ? "Edit Lab" : "New Lab"}>
             <HeaderRow>
-              <Title>New Lab</Title>
-              <CloseButton type="button" onClick={() => navigate(-1)}>Close</CloseButton>
+              <Title>{isEdit ? "Edit Lab" : "New Lab"}</Title>
+              <CloseButton type="button" onClick={() => navigate(-1)}>
+                Close
+              </CloseButton>
             </HeaderRow>
 
-            <Body>
+            <Body aria-busy={loading}>
               {/* Basic Information */}
               <Section>
                 <SectionHead>Lab Logo</SectionHead>
                 <SectionBody>
                   <Grid>
                     <Col span={5}>
-                      <Field style={{width:"97%"}} >
+                      <Field style={{ width: "97%" }}>
                         <input
                           ref={fileInput}
                           type="file"
@@ -237,9 +328,9 @@ export default function CollectorLabForm() {
                           type="button"
                           onClick={() => fileInput.current?.click()}
                           aria-label="Open logo uploader"
-                          title={logoFile?.name || "Click to upload"}
+                          title={logoFile?.name || logoName || "Click to upload"}
                         >
-                          {logoFile?.name || "Click to upload"}
+                          {logoFile?.name || logoName || "Click to upload"}
                         </DropZone>
                       </Field>
 
@@ -262,21 +353,34 @@ export default function CollectorLabForm() {
                         <Col span={6}>
                           <Field>
                             <Label>Lab Name</Label>
-                            <Input placeholder="Enter Lab Name" value={labName} onChange={(e) => setLabName(e.target.value)} />
+                            <Input
+                              placeholder="Enter Lab Name"
+                              value={labName}
+                              onChange={(e) => setLabName(e.target.value)}
+                            />
                           </Field>
                         </Col>
 
                         <Col span={6}>
                           <Field>
                             <Label>Lab Code</Label>
-                            <Input placeholder="Enter Lab Code" value={labCode} onChange={(e) => setLabCode(e.target.value)} />
+                            <Input
+                              placeholder="Enter Lab Code"
+                              value={labCode}
+                              onChange={(e) => setLabCode(e.target.value)}
+                            />
                           </Field>
                         </Col>
 
                         <Col span={12}>
                           <Field>
                             <Label>Description</Label>
-                            <QuillEditor theme="snow" value={desc} onChange={setDesc} placeholder="Write a brief description..." />
+                            <QuillEditor
+                              theme="snow"
+                              value={desc}
+                              onChange={setDesc}
+                              placeholder="Write a brief description..."
+                            />
                           </Field>
                         </Col>
                       </Grid>
@@ -293,8 +397,13 @@ export default function CollectorLabForm() {
                     <Col span={6}>
                       <Field>
                         <Label>Tax</Label>
-                        <Select value={tax} onChange={(e) => setTax(e.target.value)}>
-                          <option value="" disabled>Select Tax</option>
+                        <Select
+                          value={tax}
+                          onChange={(e) => setTax(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select Tax
+                          </option>
                           <option>GST</option>
                           <option>VAT</option>
                           <option>None</option>
@@ -305,7 +414,11 @@ export default function CollectorLabForm() {
                     <Col span={6}>
                       <Field>
                         <Label>Tax Identification Number</Label>
-                        <Input placeholder="Enter Tax Identification Number" value={taxId} onChange={(e) => setTaxId(e.target.value)} />
+                        <Input
+                          placeholder="Enter Tax Identification Number"
+                          value={taxId}
+                          onChange={(e) => setTaxId(e.target.value)}
+                        />
                       </Field>
                     </Col>
                   </Grid>
@@ -320,20 +433,36 @@ export default function CollectorLabForm() {
                     <Col span={4}>
                       <Field>
                         <Label>Phone Number</Label>
-                        <Input placeholder="Enter Phone Number" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} />
+                        <Input
+                          placeholder="Enter Phone Number"
+                          value={phone}
+                          onChange={(e) =>
+                            setPhone(e.target.value.replace(/\D/g, ""))
+                          }
+                        />
                       </Field>
                     </Col>
                     <Col span={4}>
                       <Field>
                         <Label>Email Address</Label>
-                        <Input type="email" placeholder="Enter Email Address" value={email} onChange={(e) => setEmail(e.target.value)} />
+                        <Input
+                          type="email"
+                          placeholder="Enter Email Address"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
                       </Field>
                     </Col>
                     <Col span={4}>
                       <Field>
                         <Label>Time Slot</Label>
-                        <Select value={timeSlot} onChange={(e) => setTimeSlot(e.target.value)}>
-                          <option value="" disabled>Select Time Slot</option>
+                        <Select
+                          value={timeSlot}
+                          onChange={(e) => setTimeSlot(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select Time Slot
+                          </option>
                           <option>Morning</option>
                           <option>Afternoon</option>
                           <option>Evening</option>
@@ -352,21 +481,34 @@ export default function CollectorLabForm() {
                     <Col span={6}>
                       <Field>
                         <Label>Address Line 1</Label>
-                        <Input placeholder="Enter Address Line 1" value={addr1} onChange={(e) => setAddr1(e.target.value)} />
+                        <Input
+                          placeholder="Enter Address Line 1"
+                          value={addr1}
+                          onChange={(e) => setAddr1(e.target.value)}
+                        />
                       </Field>
                     </Col>
                     <Col span={6}>
                       <Field>
                         <Label>Address Line 2</Label>
-                        <Input placeholder="Enter Address Line 2" value={addr2} onChange={(e) => setAddr2(e.target.value)} />
+                        <Input
+                          placeholder="Enter Address Line 2"
+                          value={addr2}
+                          onChange={(e) => setAddr2(e.target.value)}
+                        />
                       </Field>
                     </Col>
 
                     <Col span={3}>
                       <Field>
                         <Label>Country</Label>
-                        <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-                          <option value="" disabled>Select Country</option>
+                        <Select
+                          value={country}
+                          onChange={(e) => setCountry(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select Country
+                          </option>
                           <option>India</option>
                           <option>USA</option>
                           <option>UK</option>
@@ -376,8 +518,13 @@ export default function CollectorLabForm() {
                     <Col span={3}>
                       <Field>
                         <Label>State</Label>
-                        <Select value={stateName} onChange={(e) => setStateName(e.target.value)}>
-                          <option value="" disabled>Select State</option>
+                        <Select
+                          value={stateName}
+                          onChange={(e) => setStateName(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select State
+                          </option>
                           <option>Karnataka</option>
                           <option>Maharashtra</option>
                           <option>Gujarat</option>
@@ -387,8 +534,13 @@ export default function CollectorLabForm() {
                     <Col span={3}>
                       <Field>
                         <Label>City</Label>
-                        <Select value={city} onChange={(e) => setCity(e.target.value)}>
-                          <option value="" disabled>Select City</option>
+                        <Select
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select City
+                          </option>
                           <option>Bengaluru</option>
                           <option>Mumbai</option>
                           <option>Ahmedabad</option>
@@ -398,7 +550,13 @@ export default function CollectorLabForm() {
                     <Col span={3}>
                       <Field>
                         <Label>Postal Code</Label>
-                        <Input placeholder="Enter Postal Code" value={postal} onChange={(e) => setPostal(e.target.value.replace(/\D/g, ""))} />
+                        <Input
+                          placeholder="Enter Postal Code"
+                          value={postal}
+                          onChange={(e) =>
+                            setPostal(e.target.value.replace(/\D/g, ""))
+                          }
+                        />
                       </Field>
                     </Col>
                   </Grid>
@@ -413,19 +571,37 @@ export default function CollectorLabForm() {
                     <Col span={5}>
                       <Field>
                         <Label>License Number</Label>
-                        <Input placeholder="Enter License Number" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
+                        <Input
+                          placeholder="Enter License Number"
+                          value={licenseNumber}
+                          onChange={(e) => setLicenseNumber(e.target.value)}
+                        />
                       </Field>
                     </Col>
                     <Col span={4}>
                       <Field>
                         <Label>License Document</Label>
-                        <Input type="file" onChange={(e) => setLicenseFile(e.target.files?.[0] || null)} />
+                        <Input
+                          type="file"
+                          onChange={(e) =>
+                            setLicenseFile(e.target.files?.[0] || null)
+                          }
+                        />
+                        {licenseFileName && !licenseFile && (
+                          <span style={{ fontSize: 12, color: "#6b7280" }}>
+                            Current: {licenseFileName}
+                          </span>
+                        )}
                       </Field>
                     </Col>
                     <Col span={3}>
                       <Field>
                         <Label>License Expiry Date</Label>
-                        <Input type="date" value={licenseExpiry} onChange={(e) => setLicenseExpiry(e.target.value)} />
+                        <Input
+                          type="date"
+                          value={licenseExpiry}
+                          onChange={(e) => setLicenseExpiry(e.target.value)}
+                        />
                       </Field>
                     </Col>
                   </Grid>
@@ -440,8 +616,13 @@ export default function CollectorLabForm() {
                     <Col span={5}>
                       <Field>
                         <Label>Accreditation Type</Label>
-                        <Select value={accreditationType} onChange={(e) => setAccreditationType(e.target.value)}>
-                          <option value="" disabled>Select Accreditation Type</option>
+                        <Select
+                          value={accreditationType}
+                          onChange={(e) => setAccreditationType(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select Accreditation Type
+                          </option>
                           <option>NABL</option>
                           <option>CAP</option>
                           <option>Other</option>
@@ -451,13 +632,29 @@ export default function CollectorLabForm() {
                     <Col span={4}>
                       <Field>
                         <Label>Accreditation Certificate</Label>
-                        <Input type="file" onChange={(e) => setAccreditationFile(e.target.files?.[0] || null)} />
+                        <Input
+                          type="file"
+                          onChange={(e) =>
+                            setAccreditationFile(e.target.files?.[0] || null)
+                          }
+                        />
+                        {accreditationFileName && !accreditationFile && (
+                          <span style={{ fontSize: 12, color: "#6b7280" }}>
+                            Current: {accreditationFileName}
+                          </span>
+                        )}
                       </Field>
                     </Col>
                     <Col span={3}>
                       <Field>
                         <Label>Accreditation Expiry Date</Label>
-                        <Input type="date" value={accreditationExpiry} onChange={(e) => setAccreditationExpiry(e.target.value)} />
+                        <Input
+                          type="date"
+                          value={accreditationExpiry}
+                          onChange={(e) =>
+                            setAccreditationExpiry(e.target.value)
+                          }
+                        />
                       </Field>
                     </Col>
                   </Grid>
@@ -500,8 +697,14 @@ export default function CollectorLabForm() {
             </Body>
 
             <Footer>
-              <Primary type="button" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Save"}
+              <Primary type="button" onClick={handleSave} disabled={saving || loading}>
+                {saving
+                  ? isEdit
+                    ? "Updating…"
+                    : "Saving…"
+                  : isEdit
+                  ? "Update"
+                  : "Save"}
               </Primary>
             </Footer>
           </Card>

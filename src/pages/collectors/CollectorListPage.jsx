@@ -151,16 +151,16 @@ export default function CollectorList() {
     genders: [],
   });
 
-  // equality filters for collectors list
-  const equalityWhere = (f) => {
-    const parts = [];
-    if (f.collector) parts.push(where(documentId(), '==', f.collector));
-    if (f.lab) parts.push(where('lab', '==', f.lab));
-    if (f.gender) parts.push(where('gender', '==', f.gender));
-    if (f.status) parts.push(where('status', '==', f.status));
-    if (typeof f.statusActive === 'boolean') parts.push(where('statusActive', '==', f.statusActive));
-    return parts;
-  };
+// equalityWhere for collectors
+const equalityWhere = (f) => {
+  const parts = [];
+  if (f.collector) parts.push(where(documentId(), '==', f.collector));
+  if (f.lab) parts.push(where('lab', '==', f.lab));
+  if (f.gender && f.gender !== '') parts.push(where('gender', '==', f.gender)); // keep this
+  if (f.status) parts.push(where('status', '==', f.status));
+  if (typeof f.statusActive === 'boolean') parts.push(where('statusActive', '==', f.statusActive));
+  return parts;
+};
 
   // derive options helper (uses snapshots so we can access ids)
   const deriveOptionsFromDocs = (docs) => {
@@ -483,7 +483,7 @@ export default function CollectorList() {
         )}
       />
 
-      <AdvancedFilterDrawer
+      {/* <AdvancedFilterDrawer
         open={open}
         onClose={() => setOpen(false)}
         preset="collector"
@@ -501,7 +501,28 @@ export default function CollectorList() {
         }}
         onApply={handleApplyFilters}
         onReset={handleResetFilters}
-      />
+      /> */}
+
+<AdvancedFilterDrawer
+  open={open}
+  onClose={() => setOpen(false)}
+  preset="collector"
+  title="Advanced Filter"
+  values={values}
+  setValues={setValues}
+  options={{
+    collectors: options.collectors,
+    labs: options.labs,
+    genders: options.genders.length ? options.genders : [
+      { value:'male', label:'Male' },
+      { value:'female', label:'Female' },
+      { value:'other', label:'Other' },
+    ],
+  }}
+  onApply={handleApplyFilters}
+  onReset={handleResetFilters}
+/>
+
     </Box>
   );
 }

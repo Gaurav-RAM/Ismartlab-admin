@@ -1,79 +1,149 @@
-import { useEffect, useRef, useState } from 'react';
+// src/components/Topbar.jsx
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiBell, FiMoon, FiSun, FiUser, FiInfo, FiRotateCcw, FiDollarSign, FiLogOut } from 'react-icons/fi';
+
+// Your app state (if any) and Firebase instances
 import { useUI } from '../state/UIContext.jsx';
-import {
-  FiBell,
-  FiMoon,
-  FiSun,
-  FiUser,
-  FiInfo,
-  FiRotateCcw,
-  FiDollarSign,
-  FiLogOut,
-} from 'react-icons/fi';
+import { auth, db } from '../firebase.js';
+
+// Firebase SDK APIs
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 export default function Topbar() {
+  const navigate = useNavigate();
   const { theme, toggleTheme, smaller, larger } = useUI();
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef(null);
 
-  // Close on click outside + Esc
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(null);
+
+  // Track last created blob URL so we can revoke it
+  const lastBlobUrlRef = useRef('');
+
+  const initials = useMemo(() => {
+    const base = (displayName || email || '').trim();
+    if (!base) return 'U';
+    const parts = base.split(/\s+/);
+    const letters = parts.length === 1 ? parts[0].slice(0, 2) : (parts[0][0] || '') + (parts[1][0] || '');
+    return letters.toUpperCase();
+  }, [displayName, email]);
+
+  // Helper: set avatar from Firestore Bytes by creating a blob URL
+  const setAvatarFromBytes = (bytesValue, mime) => {
+    try {
+      const u8 = bytesValue.toUint8Array();
+      const blob = new Blob([u8], { type: mime || 'image/jpeg' });
+      const url = URL.createObjectURL(blob);
+      if (lastBlobUrlRef.current) URL.revokeObjectURL(lastBlobUrlRef.current);
+      lastBlobUrlRef.current = url;
+      setAvatarUrl(url);
+    } catch {
+      // If anything fails, clear and fall back
+      if (lastBlobUrlRef.current) {
+        URL.revokeObjectURL(lastBlobUrlRef.current);
+        lastBlobUrlRef.current = '';
+      }
+      setAvatarUrl(null);
+    }
+  };
+
+  // Auth + Firestore real-time listeners
+  useEffect(() => {
+    let unsubDoc = null;
+
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      setDisplayName(u?.displayName || '');
+      setEmail(u?.email || '');
+      // Start with Auth photoURL while we wait for Firestore
+      setAvatarUrl(u?.photoURL || null);
+
+      // Cleanup prior Firestore listener
+      if (unsubDoc) {
+        unsubDoc();
+        unsubDoc = null;
+      }
+
+      if (u) {
+        const ref = doc(db, 'users', u.uid);
+        unsubDoc = onSnapshot(ref, (snap) => {
+          if (!snap.exists()) {
+            // No profile doc; keep whatever we had (e.g., Auth photoURL)
+            return;
+          }
+          const data = snap.data() || {};
+
+          // 1) Prefer Bytes avatar saved by Profile page
+          if (data.avatarBytes) {
+            setAvatarFromBytes(data.avatarBytes, data.avatarMime);
+            return;
+          }
+
+          // 2) Else prefer explicit http(s) URL fields in Firestore
+          const urlCandidates = [data.photoURL, data.avatarUrl, data.avatar, data.photo];
+          const httpUrl = urlCandidates.find((c) => typeof c === 'string' && /^https?:\/\//i.test(c));
+
+          // Clear any previous blob URL if switching away from bytes
+          if (lastBlobUrlRef.current) {
+            URL.revokeObjectURL(lastBlobUrlRef.current);
+            lastBlobUrlRef.current = '';
+          }
+
+          setAvatarUrl(httpUrl || u.photoURL || null);
+        });
+      }
+    });
+
+    // Cleanup on unmount
+    return () => {
+      unsubAuth();
+      if (unsubDoc) unsubDoc();
+      if (lastBlobUrlRef.current) {
+        URL.revokeObjectURL(lastBlobUrlRef.current);
+        lastBlobUrlRef.current = '';
+      }
+    };
+  }, []);
+
+  // Close on click outside + Esc (use 'click' so menu item onClick runs first)
   useEffect(() => {
     const onDocClick = (e) => {
-      if (open && menuRef.current && !menuRef.current.contains(e.target)) setOpen(false);
+      if (open && containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
     };
     const onEsc = (e) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('click', onDocClick);
     document.addEventListener('keydown', onEsc);
     return () => {
-      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('click', onDocClick);
       document.removeEventListener('keydown', onEsc);
     };
   }, [open]);
 
-  const user = {
-    name: 'Liam Long',
-    email: 'vendor@gmail.com',
-    avatar: 'https://i.pravatar.cc/80?img=12', // swap with your avatar url
-  };
-
-  // Logout handler
   async function handleLogout() {
-    try {
-      // If your backend manages httpOnly cookies, this will clear them server-side
-      await fetch('/api/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
-    } catch (_) {}
-
-    // Clear client-side storage
-    try {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-    } catch (_) {}
-    try {
-      sessionStorage.clear();
-    } catch (_) {}
-
-    // Expire all accessible cookies (won’t affect httpOnly cookies set on another subdomain)
+    try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }).catch(() => {}); } catch {}
+    try { localStorage.removeItem('authToken'); localStorage.removeItem('user'); } catch {}
+    try { sessionStorage.clear(); } catch {}
     try {
       document.cookie.split(';').forEach((c) => {
         const eq = c.indexOf('=');
         const name = (eq > -1 ? c.slice(0, eq) : c).trim();
-        if (name) {
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        }
+        if (name) document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
       });
-    } catch (_) {}
-
+    } catch {}
     setOpen(false);
-    // Redirect to login (change if your route differs)
     window.location.assign('/login');
   }
 
   return (
-    <header style={{justifyContent:"flex-end"}} className="topbar">
-
+    <header style={{ justifyContent: 'flex-end' }} className="topbar">
       <div className="top-actions">
         <span>A</span>
         <button
+          type="button"
           className="btn"
           style={{ padding: '6px 10px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)' }}
           onClick={smaller}
@@ -81,6 +151,7 @@ export default function Topbar() {
           A
         </button>
         <button
+          type="button"
           className="btn"
           style={{ padding: '6px 10px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)' }}
           onClick={larger}
@@ -88,6 +159,7 @@ export default function Topbar() {
           A
         </button>
         <button
+          type="button"
           className="btn"
           style={{ padding: 8, background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)' }}
           onClick={toggleTheme}
@@ -99,8 +171,9 @@ export default function Topbar() {
         <span className="badge">EN</span>
 
         {/* Profile dropdown */}
-        <div className="profile" style={{ position: 'relative' }}>
+        <div className="profile" style={{ position: 'relative' }} ref={containerRef}>
           <button
+            type="button"
             className="profile-btn"
             onClick={() => setOpen((v) => !v)}
             aria-haspopup="menu"
@@ -118,23 +191,37 @@ export default function Topbar() {
               cursor: 'pointer',
             }}
           >
-            <div
-              className="avatar"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                backgroundColor: 'var(--muted)',
-                backgroundImage: `url(${user.avatar})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            />
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Profile"
+                style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+                onError={() => {
+                  // If URL fails (unlikely for a blob), clear and fall back
+                  if (lastBlobUrlRef.current) {
+                    URL.revokeObjectURL(lastBlobUrlRef.current);
+                    lastBlobUrlRef.current = '';
+                  }
+                  setAvatarUrl(null);
+                }}
+              />
+            ) : (
+              <div
+                aria-hidden="true"
+                style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  backgroundColor: 'var(--muted)', color: 'var(--text)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 600,
+                }}
+              >
+                {initials}
+              </div>
+            )}
           </button>
 
           {open && (
             <div
-              ref={menuRef}
               role="menu"
               className="profile-menu"
               style={{
@@ -160,53 +247,48 @@ export default function Topbar() {
                   alignItems: 'center',
                 }}
               >
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    backgroundImage: `url(${user.avatar})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  }}
-                />
-                <div style={{ minWidth: 0 }}>
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+                    onError={() => {
+                      if (lastBlobUrlRef.current) {
+                        URL.revokeObjectURL(lastBlobUrlRef.current);
+                        lastBlobUrlRef.current = '';
+                      }
+                      setAvatarUrl(null);
+                    }}
+                  />
+                ) : (
                   <div
+                    aria-hidden="true"
                     style={{
-                      fontWeight: 600,
-                      color: 'var(--text)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      width: 40, height: 40, borderRadius: '50%',
+                      backgroundColor: 'var(--muted)', color: 'var(--text)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 14, fontWeight: 700,
                     }}
                   >
-                    {user.name}
+                    {initials}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--muted-foreground, #888)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {user.email}
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {displayName || 'User'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--muted-foreground, #888)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {email || '—'}
                   </div>
                 </div>
               </div>
 
               {/* Menu list */}
               <ul style={{ listStyle: 'none', margin: 0, padding: 8 }}>
-                <MenuItem icon={<FiUser />} label="My Profile" onClick={() => setOpen(false)} />
+                <MenuItem icon={<FiUser />} label="My Profile" onClick={() => { setOpen(false); navigate('/profile'); }} />
                 <MenuItem icon={<FiInfo />} label="My Info" onClick={() => setOpen(false)} />
                 <MenuItem icon={<FiRotateCcw />} label="Subscription History" onClick={() => setOpen(false)} />
-                <MenuItem
-                  icon={<FiDollarSign />}
-                  label="Wallet"
-                  end={<span style={{ color: 'var(--primary, #2563eb)', fontWeight: 600 }}>$0.00</span>}
-                  onClick={() => setOpen(false)}
-                />
+                <MenuItem icon={<FiDollarSign />} label="Wallet" end={<span style={{ color: 'var(--primary, #2563eb)', fontWeight: 600 }}>$0.00</span>} onClick={() => setOpen(false)} />
                 <div style={{ height: 8 }} />
                 <MenuItem icon={<FiLogOut />} label="Logout" onClick={handleLogout} />
               </ul>
@@ -222,6 +304,7 @@ function MenuItem({ icon, label, end, onClick }) {
   return (
     <li>
       <button
+        type="button"
         role="menuitem"
         onClick={onClick}
         style={{

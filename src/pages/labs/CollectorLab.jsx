@@ -1,327 +1,354 @@
 // src/pages/labs/CollectorLab.jsx
-import React, { useEffect, useMemo, useState } from 'react';
-import CollectorListUnified from '../../components/CollectorListUnified';
-import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import React, { useEffect, useMemo, useState } from "react";
+import styled from "styled-components";
+import CollectorListUnified from "../../components/CollectorListUnified";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
+import IconButton from "@mui/material/IconButton";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import Breadcrumbs from '@mui/material/Breadcrumbs';
-import Link from '@mui/material/Link';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
-import AddIcon from '@mui/icons-material/Add';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import SearchIcon from '@mui/icons-material/Search';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Link from "@mui/material/Link";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import FormControl from "@mui/material/FormControl";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import AddIcon from "@mui/icons-material/Add";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SearchIcon from "@mui/icons-material/Search";
 
-import { AdvancedFilterDrawer } from '../../components/AdvancedFilter';
-import { db } from '../../firebase';
+// Firestore
 import {
   collection,
   onSnapshot,
-  query as fsQuery,
-  orderBy,
-  where,
-  writeBatch,
   doc,
   deleteDoc,
-  getCountFromServer,
-} from 'firebase/firestore';
+  writeBatch,
+} from "firebase/firestore";
+import { db } from "../../firebase.js";
 
-// helpers
-const getByPath = (obj, path) => path.split('.').reduce((a, k) => (a ? a[k] : undefined), obj);
-const norm = (s) => (s ?? '').toString().trim().toLowerCase();
+// helper to read nested props like "address.city"
+const getByPath = (obj, path) =>
+  path.split(".").reduce((a, k) => (a ? a[k] : undefined), obj);
 
-// sortable header
+// styled-components SortHeader
+const ThButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+`;
+
+const SortIcon = styled.span`
+  width: 10px;
+  height: 12px;
+  position: relative;
+  display: inline-block;
+
+  &::before,
+  &::after {
+    content: "";
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+  }
+
+  /* Up arrow */
+  &::before {
+    border-bottom: 6px solid
+      ${({ $active, $dir }) =>
+        $active && $dir === "asc" ? "#fff" : "rgba(255,255,255,0.45)"};
+    margin-bottom: 2px;
+  }
+
+  /* Down arrow */
+  &::after {
+    border-top: 6px solid
+      ${({ $active, $dir }) =>
+        $active && $dir === "desc" ? "#fff" : "rgba(255,255,255,0.45)"};
+  }
+`;
+
 function SortHeader({ label, path, sortBy, sortDir, onChange }) {
   const next = () => {
-    if (sortBy !== path) return onChange(path, 'asc');
-    if (sortDir === 'asc') return onChange(path, 'desc');
+    if (sortBy !== path) return onChange(path, "asc");
+    if (sortDir === "asc") return onChange(path, "desc");
     return onChange(null, null);
   };
-  const iconCls = sortBy === path ? (sortDir === 'asc' ? 'clu-sort asc' : 'clu-sort desc') : 'clu-sort';
+  const active = sortBy === path;
   return (
-    <button className="clu-thbtn" onClick={next} aria-label={`Sort by ${label}`}>
+    <ThButton onClick={next} aria-label={`Sort by ${label}`}>
       <span>{label}</span>
-      <span className={iconCls} aria-hidden="true" />
-    </button>
+      <SortIcon $active={active} $dir={sortDir} aria-hidden="true" />
+    </ThButton>
   );
 }
-
-// map lab doc -> row
-const mapDocToRow = (snap, counts) => {
-  const d = snap.data();
-  const createdAt = d.createdAt?.toDate ? d.createdAt.toDate() : null;
-  const labName = d.labName ?? d.name ?? '';
-  const agg = counts[snap.id] || { tests: '', bookings: '', collectors: '' };
-  return {
-    id: snap.id,
-    name: labName,
-    testCaseCounter: d.testsCount ?? d.testCount ?? agg.tests ?? '',
-    bookings: d.bookingCount ?? agg.bookings ?? '',
-    collectors: d.collectorsCount ?? agg.collectors ?? '',
-    status: typeof d.active === 'boolean' ? (d.active ? 'active' : 'inactive') : (d.status ?? ''),
-    _createdAt: createdAt,
-    _labName: labName,
-    _accreditationType: d.accreditation?.type ?? d.type ?? '',
-    _taxId: d.taxId ?? d.tax ?? '',
-    _paymentMode: d.paymentMode ?? d.defaultPaymentMode ?? '',
-  };
-};
 
 export default function CollectorLab() {
   const navigate = useNavigate();
 
-  // header state
-  const [action, setAction] = useState('');
-  const [quickFilter, setQuickFilter] = useState('');
-  const [searchText, setSearchText] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  // header controls
+  const [action, setAction] = useState("");
+  const [query, setQuery] = useState("");
+  const [quickFilter, setQuickFilter] = useState("");
+  const [applying, setApplying] = useState(false);
+
+  // labs from Firestore (live)
+  const [labs, setLabs] = useState([]);
+
+  // subscribe to labs in real-time (refreshes table on add/update/delete)
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(searchText.trim()), 300);
-    return () => clearTimeout(id);
-  }, [searchText]);
-
-  // advanced drawer
-  const [openAdv, setOpenAdv] = useState(false);
-  const [advValues, setAdvValues] = useState({ lab:'', collector:'', tax:'', accreditationType:'', paymentMode:'' });
-  const [appliedAdv, setAppliedAdv] = useState({});
-  const onApplyAdv = () => { setAppliedAdv(advValues); setOpenAdv(false); };
-  const onResetAdv = () => { setAdvValues({}); setAppliedAdv({}); };
-
-  // data
-  const [labDocs, setLabDocs] = useState([]);
-  const [countsMap, setCountsMap] = useState({}); // { [labId]: {tests, bookings, collectors} }
-
-  // equality filters (use only fields that exist)
-  const equalityWhere = () => {
-    const parts = [];
-    if (quickFilter === 'active') parts.push(where('active','==',true));
-    if (quickFilter === 'inactive') parts.push(where('active','==',false));
-    if (appliedAdv.tax) parts.push(where('taxId','==', appliedAdv.tax));
-    if (appliedAdv.accreditationType) parts.push(where('accreditation.type','==', appliedAdv.accreditationType));
-    if (appliedAdv.paymentMode) parts.push(where('paymentMode','==', appliedAdv.paymentMode));
-    if (appliedAdv.lab) parts.push(where('__name__','==', appliedAdv.lab));
-    return parts;
-  };
-
-  // fetch counts from related collections
-  const fetchCountsForLabs = async (docs) => {
-    const out = {};
-    const countFor = async (coll, field, labId) => {
-      const q = fsQuery(collection(db, coll), where(field, '==', labId));
-      const snap = await getCountFromServer(q);
-      return snap.data().count || 0;
-    };
-    for (const s of docs) {
-      const id = s.id;
-      let tests = await countFor('collector_test_cases', 'lab.id', id);
-      if (!tests) tests = await countFor('collector_test_cases', 'labId', id);
-      let bookings = await countFor('appointments', 'lab.id', id);
-      if (!bookings) bookings = await countFor('appointments', 'labId', id);
-      let collectors = await countFor('collectors', 'lab.id', id);
-      if (!collectors) collectors = await countFor('collectors', 'labId', id);
-      out[id] = { tests, bookings, collectors };
-    }
-    setCountsMap(out);
-  };
-
-  // subscribe to labs + search
-  useEffect(() => {
-    const col = collection(db, 'labs');
-
-    if (!debouncedSearch) {
-      const q = fsQuery(col, ...equalityWhere(), orderBy('createdAt','desc'));
-      const unsub = onSnapshot(q, async (snap) => {
-        setLabDocs(snap.docs);
-        await fetchCountsForLabs(snap.docs);
+    const unsub = onSnapshot(collection(db, "labs"), (snap) => {
+      const next = snap.docs.map((d) => {
+        const v = d.data() || {};
+        return {
+          id: d.id,
+          labCode: v.labCode || "",
+          labName: v.labName || "",
+          active: Boolean(v.active),
+          paymentMode: v.paymentMode || "",
+          phone: v.phone || "",
+          email: v.email || "",
+          createdAt:
+            v.createdAt?.toDate?.().toISOString?.().slice(0, 10) ||
+            v.createdAt ||
+            "",
+        };
       });
-      return () => unsub();
-    }
-
-    const term = norm(debouncedSearch);
-    const merged = new Map();
-    const build = (field) => fsQuery(
-      col,
-      ...equalityWhere(),
-      orderBy(field),
-      where(field, '>=', term),
-      where(field, '<=', term + '\uf8ff')
-    );
-    const u1 = onSnapshot(build('labName'), (snap) => { snap.docs.forEach(d => merged.set(d.id, d)); const docs = Array.from(merged.values()); setLabDocs(docs); fetchCountsForLabs(docs); });
-    const u2 = onSnapshot(build('accreditation.type'), (snap) => { snap.docs.forEach(d => merged.set(d.id, d)); const docs = Array.from(merged.values()); setLabDocs(docs); fetchCountsForLabs(docs); });
-    const u3 = onSnapshot(build('taxId'), (snap) => { snap.docs.forEach(d => merged.set(d.id, d)); const docs = Array.from(merged.values()); setLabDocs(docs); fetchCountsForLabs(docs); });
-    return () => { u1 && u1(); u2 && u2(); u3 && u3(); };
-  }, [quickFilter, appliedAdv, debouncedSearch]);
-
-  // rows from docs + counts
-  const rowsFromDb = useMemo(() => labDocs.map(s => mapDocToRow(s, countsMap)), [labDocs, countsMap]);
-
-  // options for drawer
-  const filterOptions = useMemo(() => {
-    const uniq = (arr) => Array.from(new Map(arr.filter(Boolean).map(x => [x.value, x])).values());
-    const labs = uniq(rowsFromDb.map(r => ({ value: r.id, label: r.name })).filter(Boolean));
-    const taxes = uniq(rowsFromDb.map(r => r._taxId ? ({ value: r._taxId, label: r._taxId }) : null));
-    const accreditations = uniq(rowsFromDb.map(r => r._accreditationType ? ({ value: r._accreditationType, label: r._accreditationType }) : null));
-    const paymentModes = uniq([
-      ...rowsFromDb.map(r => r._paymentMode ? ({ value: r._paymentMode, label: r._paymentMode }) : null),
-      { value:'cash', label:'Cash' }, { value:'card', label:'Card' }, { value:'upi', label:'UPI' }, { value:'netbanking', label:'Net Banking' },
-    ]);
-    return { labs, collectors: [], taxes, accreditations, paymentModes };
-  }, [rowsFromDb]);
-
-  // SORTING: single state pair (fixes “already been declared”)
-  const [sortBy, setSortBy] = useState(null);
-  const [sortDir, setSortDir] = useState(null);
-  const onSortChange = (path, dir) => { setSortBy(path); setSortDir(dir); };
-
-  const rows = useMemo(() => {
-    const list = rowsFromDb.slice();
-    if (!sortBy || !sortDir) return list;
-    list.sort((a, b) => {
-      const A = getByPath(a, sortBy) ?? '';
-      const B = getByPath(b, sortBy) ?? '';
-      return sortDir === 'asc' ? (A > B ? 1 : A < B ? -1 : 0) : (A < B ? 1 : A > B ? -1 : 0);
+      setLabs(next);
     });
-    return list;
-  }, [rowsFromDb, sortBy, sortDir]);
+    return () => unsub();
+  }, []); // onSnapshot auto-updates UI when documents change or delete. [web:85]
 
-  // selection and bulk apply
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const allOnPageSelected = rows.length > 0 && rows.every(r => selectedIds.has(r.id));
-  const toggleOne = (id, checked) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      checked ? next.add(id) : next.delete(id);
-      return next;
-    });
-  };
-  const toggleAllOnPage = (checked) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (checked) rows.forEach(r => next.add(r.id));
-      else rows.forEach(r => next.delete(r.id));
-      return next;
-    });
-  };
-  const BULK_UPDATES = { enable: { active: true }, disable: { active: false } };
+  const breadcrumbs = [
+    { label: "Dashboard", to: "/" },
+    { label: "Labs" },
+  ];
+
+  const bulkActions = [
+    { value: "enable", label: "Enable" },
+    { value: "disable", label: "Disable" },
+    { value: "delete", label: "Delete" },
+  ];
+
+  const filterOptions = [
+    { value: "", label: "All" },
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
+  ];
+
   const handleApply = async () => {
-    if (!action) return alert('Select an action first.');
-    const updates = BULK_UPDATES[action];
-    if (!updates) return alert('Unknown action.');
+    if (!action) return;
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      alert("Select at least one lab");
+      return;
+    }
+    if (
+      action === "delete" &&
+      !window.confirm(`Delete ${ids.length} lab(s)? This cannot be undone.`)
+    ) {
+      return;
+    }
+    setApplying(true);
     try {
-      const batch = writeBatch(db);
-      rows.forEach(r => { if (selectedIds.has(r.id)) batch.update(doc(db, 'labs', r.id), updates); });
-      await batch.commit();
-      setAction(''); setSelectedIds(new Set());
-      alert('Bulk update applied.');
+      if (action === "enable" || action === "disable") {
+        const batch = writeBatch(db);
+        ids.forEach((id) => {
+          batch.update(doc(db, "labs", id), { active: action === "enable" });
+        });
+        await batch.commit();
+      } else if (action === "delete") {
+        // optimistic UI removal
+        setLabs((prev) => prev.filter((x) => !ids.includes(x.id)));
+        const batch = writeBatch(db);
+        ids.forEach((id) => batch.delete(doc(db, "labs", id)));
+        await batch.commit();
+      }
+      setSelected(new Set());
+      setAction("");
     } catch (e) {
-      console.error(e);
-      alert('Failed to apply bulk update.');
+      console.error("Apply failed:", e);
+      alert(`Apply failed: ${e.code || "unknown"} - ${e.message || ""}`);
+    } finally {
+      setApplying(false);
+    }
+  }; // Batched writes allow multi-document enable/disable/delete in one atomic commit. [web:79]
+
+  const handleRowDelete = async (r) => {
+    if (!r?.id) {
+      alert("Missing row id");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Delete "${r.labName || r.labCode || r.id}"? This cannot be undone.`
+      )
+    )
+      return;
+    // optimistic UI
+    setLabs((prev) => prev.filter((x) => x.id !== r.id));
+    try {
+      await deleteDoc(doc(db, "labs", r.id));
+    } catch (e) {
+      console.error("Delete failed:", e);
+      alert(`Delete failed: ${e.code || "unknown"} - ${e.message || ""}`);
+      setLabs((prev) => [...prev, r]);
     }
   };
 
-  // CSV export
+  const handleRowEdit = (r) => navigate(`/labs/${r.id}/edit`); // Navigate to edit route. [web:116]
+  const handleRowView = (r) => navigate(`/labs/${r.id}`); // Navigate to view/details route. [web:116]
+    const handleSession = (r) => navigate(`/labs/edits/${r.id}`);
   const handleExport = () => {
-    const headers = ['Name','Tests','Bookings','Collectors','Status','Created'];
-    const lines = [
-      headers.join(','),
-      ...rows.map(r => [
-        (r.name ?? '').replace(/,/g,' '),
-        (r.testCaseCounter ?? '').toString().replace(/,/g,' '),
-        (r.bookings ?? '').toString().replace(/,/g,' '),
-        (r.collectors ?? '').toString().replace(/,/g,' '),
-        (r.status ?? '').replace(/,/g,' '),
-        (r._createdAt ? r._createdAt.toLocaleString() : '').replace(/,/g,' ')
-      ].join(','))
-    ];
-    const csv = lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `labs_${Date.now()}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    alert("Export not implemented in this snippet.");
   };
 
-  // header UI
-  const breadcrumbs = [{ label: 'Dashboard', to: '/' }, { label: 'Labs' }];
-  const renderHeader = () => (
-    <Box sx={{ width: '100%' }}>
+  const renderLabHeader = () => (
+    <Box sx={{ width: "100%" }}>
       <Box sx={{ mb: 2.5 }}>
         <Breadcrumbs aria-label="breadcrumb">
-          {breadcrumbs.map((b, i) => b.to
-            ? <Link key={i} component={RouterLink} underline="hover" to={b.to}>{b.label}</Link>
-            : <Typography key={i}>{b.label}</Typography>
+          {breadcrumbs.map((b, i) =>
+            b.to ? (
+              <Link key={i} component={RouterLink} underline="hover" to={b.to}>
+                {b.label}
+              </Link>
+            ) : (
+              <Typography key={i}>{b.label}</Typography>
+            )
           )}
         </Breadcrumbs>
       </Box>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 2,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
             <Select
-              style={{ width: "90px", height:"40px" }}
+              style={{height:"40px"}}
               displayEmpty
               value={action}
               onChange={(e) => setAction(e.target.value)}
-              renderValue={(val) => val ? (val === 'enable' ? 'Enable' : 'Disable') : 'No action'}
+              renderValue={(val) =>
+                val
+                  ? bulkActions.find((a) => a.value === val)?.label ?? ""
+                  : "No action"
+              }
               aria-label="Bulk action"
             >
-              <MenuItem value=""><em>No action</em></MenuItem>
-              <MenuItem value="enable">Enable</MenuItem>
-              <MenuItem value="disable">Disable</MenuItem>
+              <MenuItem value="">
+                <em>No action</em>
+              </MenuItem>
+              {bulkActions.map((a) => (
+                <MenuItem key={a.value} value={a.value}>
+                  {a.label}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
-          <Button style={{height:"40px"}} variant="contained" size="small" disabled={!action || selectedIds.size === 0} onClick={handleApply}>
-            Apply
+
+          <Button
+          style={{height:"40px"}}
+            variant="contained"
+            size="small"
+            disabled={!action || applying || selected.size === 0}
+            onClick={handleApply}
+          >
+            {applying ? "Applying…" : "Apply"}
           </Button>
-          <Button style={{height:"40px"}} startIcon={<DownloadRoundedIcon />} variant="contained" color="error" size="small" onClick={handleExport}>
+
+          <Button
+          style={{height:"40px"}}
+            startIcon={<DownloadRoundedIcon />}
+            variant="contained"
+            color="error"
+            size="small"
+            onClick={handleExport}
+          >
             Export
           </Button>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FormControl size="small" sx={{ minWidth: 120 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 100 }}>
             <Select
-              style={{ height:"40px" }}
+            style={{height:"40px"}}
               displayEmpty
               value={quickFilter}
               onChange={(e) => setQuickFilter(e.target.value)}
-              renderValue={(val) => (!val ? 'All statuses' : val[0].toUpperCase() + val.slice(1))}
-              aria-label="Quick status filter"
+              renderValue={(val) =>
+                !val
+                  ? "All"
+                  : filterOptions.find((f) => f.value === val)?.label ?? "All"
+              }
+              aria-label="Quick filter"
             >
-              <MenuItem value=""><em>All statuses</em></MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="inactive">Inactive</MenuItem>
+              <MenuItem value="">
+                <em>All</em>
+              </MenuItem>
+              {filterOptions.map((f) => (
+                <MenuItem key={f.value} value={f.value}>
+                  {f.label}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
 
           <TextField
-            style={{height:"40px"}}
             size="small"
-            placeholder="Search by lab/tax/accreditation…"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon /></InputAdornment>) }}
+            placeholder="search labs..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
             sx={{ minWidth: 320 }}
             aria-label="Search"
           />
 
-          <Button style={{height:"40px"}} onClick={() => navigate("form")} startIcon={<AddIcon />} variant="contained" size="small">
+          <Button
+          style={{height:"40px"}}
+            onClick={() => navigate("/labs/new")}
+            startIcon={<AddIcon />}
+            variant="contained"
+            size="small"
+          >
             New
           </Button>
 
-          <Button style={{height:"40px"}} startIcon={<FilterListIcon />} variant="contained" color="error" size="small" onClick={() => setOpenAdv(true)}>
+          <Button
+          style={{height:"40px"}}
+            startIcon={<FilterListIcon />}
+            variant="contained"
+            color="error"
+            size="small"
+            onClick={() => {}}
+          >
             Advanced Filter
           </Button>
         </Box>
@@ -329,94 +356,252 @@ export default function CollectorLab() {
     </Box>
   );
 
-  // table head
+  const [sortBy, setSortBy] = useState(null);
+  const [sortDir, setSortDir] = useState(null);
+  const onSortChange = (path, dir) => {
+    setSortBy(path);
+    setSortDir(dir);
+  };
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return labs.filter((c) => {
+      const statusOk = quickFilter
+        ? (quickFilter === "active" ? c.active : !c.active)
+        : true;
+      const text = [
+        c.labCode,
+        c.labName,
+        c.paymentMode,
+        c.phone,
+        c.email,
+        c.createdAt,
+        c.active ? "active" : "inactive",
+      ]
+        .join(" ")
+        .toLowerCase();
+      const textOk = !q ? true : text.includes(q);
+      return statusOk && textOk;
+    });
+  }, [labs, query, quickFilter]);
+
+  const rows = useMemo(() => {
+    if (!sortBy || !sortDir) return filtered.slice();
+    const copy = filtered.slice();
+    copy.sort((a, b) => {
+      const av = getByPath(a, sortBy);
+      const bv = getByPath(b, sortBy);
+      const A = av == null ? "" : av;
+      const B = bv == null ? "" : bv;
+      if (A < B) return sortDir === "asc" ? -1 : 1;
+      if (A > B) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return copy;
+  }, [filtered, sortBy, sortDir]);
+
+  const [selected, setSelected] = useState(() => new Set());
+  const visibleIds = rows.map((r) => r.id);
+  const allOnPageSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+  const toggleAllOnPage = (checked) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) visibleIds.forEach((id) => next.add(id));
+      else visibleIds.forEach((id) => next.delete(id));
+      return next;
+    });
+  };
+  const toggleOne = (id, checked) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
   const renderHead = () => (
     <tr>
       <th style={{ width: 40 }}>
-        <input type="checkbox" checked={allOnPageSelected} onChange={(e) => toggleAllOnPage(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={allOnPageSelected}
+          onChange={(e) => toggleAllOnPage(e.target.checked)}
+          aria-label="Select all on page"
+        />
       </th>
-      <th className="clu-th"><SortHeader label="Name" path="name" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} /></th>
-      <th className="clu-th"><SortHeader label="Tests" path="testCaseCounter" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} /></th>
-      <th className="clu-th"><SortHeader label="Bookings" path="bookings" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} /></th>
-      <th className="clu-th"><SortHeader label="Collectors" path="collectors" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} /></th>
-      <th className="clu-th"><SortHeader label="Status" path="status" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} /></th>
+
+      <th
+        aria-sort={
+          sortBy === "labCode"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Lab Code"
+          path="labCode"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
+      </th>
+
+      <th
+        aria-sort={
+          sortBy === "labName"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Lab Name"
+          path="labName"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
+      </th>
+
+      <th
+        aria-sort={
+          sortBy === "paymentMode"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Payment Mode"
+          path="paymentMode"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
+      </th>
+
+      <th
+        aria-sort={
+          sortBy === "createdAt"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Created"
+          path="createdAt"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
+      </th>
+
+      <th
+        aria-sort={
+          sortBy === "active"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Status"
+          path="active"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
+      </th>
+
       <th>Action</th>
     </tr>
   );
 
   return (
-    <Box sx={{ width: '100%' }}>
-      <CollectorListUnified
-        variant=""
-        title="Labs"
-        rows={rows}
-        total={rows.length}
-        page={1}
-        pageSize={10}
-        onPageChange={() => {}}
-        onPageSizeChange={() => {}}
-        onSearch={() => {}}
-        onOpenAdvancedFilter={() => setOpenAdv(true)}
-        onExport={handleExport}
-        headerSlot={renderHeader}
-        renderHead={renderHead}
-        renderRow={(r) => (
-          <tr key={r.id}>
-            <td>
-              <input
-                type="checkbox"
-                checked={selectedIds.has(r.id)}
-                onChange={(e) => toggleOne(r.id, e.target.checked)}
-              />
-            </td>
-            <td>{r.name}</td>
-            <td>{r.testCaseCounter}</td>
-            <td>{r.bookings}</td>
-            <td>{r.collectors}</td>
-            <td>{r.status}</td>
-            <td>
-              <Stack direction="row" spacing={0.5}>
-                <Tooltip title="View">
-                  <IconButton size="small" color="primary" aria-label="view" onClick={() => navigate(`/labs/view/${r.id}`)}>
-                    <VisibilityOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Edit">
-                  <IconButton size="small" color="primary" aria-label="edit" onClick={() => navigate(`/labs/edit/${r.id}`)}>
-                    <EditOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton size="small" color="error" aria-label="delete" onClick={async () => {
-                    if (!window.confirm('Delete this lab?')) return;
-                    await deleteDoc(doc(db, 'labs', r.id));
-                  }}>
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-            </td>
-          </tr>
-        )}
-      />
-
-      <AdvancedFilterDrawer
-        open={openAdv}
-        onClose={() => setOpenAdv(false)}
-        preset="lab"
-        title="Advanced Filter"
-        values={advValues}
-        setValues={setAdvValues}
-        options={{
-          labs: filterOptions.labs,
-          collectors: [],
-          taxes: filterOptions.taxes,
-          accreditations: filterOptions.accreditations,
-          paymentModes: filterOptions.paymentModes,
-        }}
-        onApply={onApplyAdv}
-        onReset={onResetAdv}
-      />
-    </Box>
+    <CollectorListUnified
+      variant=""
+      title="Collector Labs"
+      rows={rows}
+      total={rows.length}
+      page={1}
+      pageSize={10}
+      onPageChange={() => {}}
+      onPageSizeChange={() => {}}
+      onSearch={() => {}}
+      onOpenAdvancedFilter={() => {}}
+      onExport={() => {}}
+      headerSlot={renderLabHeader}
+      renderHead={renderHead}
+      renderRow={(r) => (
+        <tr key={r.id}>
+          <td style={{ width: 40 }}>
+            <input
+              type="checkbox"
+              checked={selected.has(r.id)}
+              onChange={(e) => toggleOne(r.id, e.target.checked)}
+              aria-label={`Select row ${r.labCode}`}
+            />
+          </td>
+          <td>{r.labCode}</td>
+          <td>{r.labName}</td>
+          <td>{r.paymentMode || "-"}</td>
+          <td>{r.createdAt || "-"}</td>
+          <td>{r.active ? "Active" : "Inactive"}</td>
+          <td>
+            <Stack direction="row" spacing={0.5}>
+              <Tooltip title="History">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  aria-label="history"
+                  onClick={() => handleSession(r)}
+                >
+                  <HistoryOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Edit">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  aria-label="edit"
+                  onClick={() => handleRowEdit(r)}
+                >
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="View">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  aria-label="view"
+                  onClick={() => handleRowView(r)}
+                >
+                  <VisibilityOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton
+                  size="small"
+                  color="error"
+                  aria-label="delete"
+                  onClick={() => handleRowDelete(r)}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </td>
+        </tr>
+      )}
+    />
   );
 }

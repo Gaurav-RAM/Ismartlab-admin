@@ -1,31 +1,42 @@
 // src/pages/labs/CollectorLab.jsx
-import React, { useState, useMemo } from 'react';
-import styled from 'styled-components';
-import CollectorListUnified from '../../components/CollectorListUnified';
-import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { useNavigate } from 'react-router-dom';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
-import Link from '@mui/material/Link';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import React, { useEffect, useMemo, useState } from "react";
+import styled from "styled-components";
+import CollectorListUnified from "../../components/CollectorListUnified";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
+import IconButton from "@mui/material/IconButton";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import AddIcon from '@mui/icons-material/Add';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import SearchIcon from '@mui/icons-material/Search';
-import { Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Link from "@mui/material/Link";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import FormControl from "@mui/material/FormControl";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import AddIcon from "@mui/icons-material/Add";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SearchIcon from "@mui/icons-material/Search";
 
-// helper to read nested props like "coupon.code"
-const getByPath = (obj, path) => path.split('.').reduce((a, k) => (a ? a[k] : undefined), obj);
+// Firestore
+import {
+  collection,
+  onSnapshot,
+  doc,
+  deleteDoc,
+  writeBatch,
+  updateDoc, // optional (not required when batching)
+} from "firebase/firestore";
+import { db } from "../../firebase";
+
+// helper to read nested props like "address.city"
+const getByPath = (obj, path) =>
+  path.split(".").reduce((a, k) => (a ? a[k] : undefined), obj);
 
 // styled-components SortHeader
 const ThButton = styled.button`
@@ -74,8 +85,8 @@ const SortIcon = styled.span`
 
 function SortHeader({ label, path, sortBy, sortDir, onChange }) {
   const next = () => {
-    if (sortBy !== path) return onChange(path, 'asc');
-    if (sortDir === 'asc') return onChange(path, 'desc');
+    if (sortBy !== path) return onChange(path, "asc");
+    if (sortDir === "asc") return onChange(path, "desc");
     return onChange(null, null);
   };
   const active = sortBy === path;
@@ -87,48 +98,117 @@ function SortHeader({ label, path, sortBy, sortDir, onChange }) {
   );
 }
 
-export default function Coupans() {
+export default function CollectorLab() {
   const navigate = useNavigate();
 
   // local UI state for header controls
-  const [action, setAction] = useState('');
-  const [query, setQuery] = useState('');
-  const [quickFilter, setQuickFilter] = useState('');
+  const [action, setAction] = useState("");
+  const [query, setQuery] = useState("");
+  const [quickFilter, setQuickFilter] = useState("");
+  const [applying, setApplying] = useState(false);
 
-  // coupons data aligned to header columns
-  const [coupons] = useState([
-    { id: 'c1', code: 'SAVE10', lab: 'CollectorLab A', discountValue: '10%', startAt: '2025-11-01', endAt: '2025-12-31', status: 'Active' },
-    { id: 'c2', code: 'NEW20',  lab: 'CollectorLab B', discountValue: '20%', startAt: '2025-10-15', endAt: '2025-11-30', status: 'Inactive' },
-    { id: 'c3', code: 'FEST15', lab: 'CollectorLab A', discountValue: '15%', startAt: '2025-11-10', endAt: '2026-01-10', status: 'Active' },
-    { id: 'c4', code: 'WELCOME5', lab: 'CollectorLab C', discountValue: '5%', startAt: '2025-09-01', endAt: '2025-12-01', status: 'Active' },
-    { id: 'c5', code: 'LAB25', lab: 'CollectorLab B', discountValue: '25%', startAt: '2025-11-05', endAt: '2025-11-25', status: 'Inactive' },
-  ]);
+  // labs from Firestore
+  const [labs, setLabs] = useState([]);
+
+  // subscribe to labs in real-time
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "labs"), (snap) => {
+      const next = snap.docs.map((d) => {
+        const v = d.data() || {};
+        return {
+          id: d.id,
+          labCode: v.labCode || "",
+          labName: v.labName || "",
+          active: Boolean(v.active),
+          paymentMode: v.paymentMode || "",
+          phone: v.phone || "",
+          email: v.email || "",
+          // createdAt may be a Timestamp; format to ISO/date string for display
+          createdAt:
+            v.createdAt?.toDate?.().toISOString?.().slice(0, 10) ||
+            v.createdAt ||
+            "",
+        };
+      });
+      setLabs(next);
+    });
+    return () => unsub();
+  }, []);
 
   const breadcrumbs = [
-    { label: 'Dashboard', to: '/' },
-    { label: 'Collector List' },
+    { label: "Dashboard", to: "/" },
+    { label: "Labs" },
   ];
 
   const bulkActions = [
-    { value: 'enable', label: 'Enable' },
-    { value: 'disable', label: 'Disable' },
+    { value: "enable", label: "Enable" },
+    { value: "disable", label: "Disable" },
+    { value: "delete", label: "Delete" },
   ];
 
   const filterOptions = [
-    { value: '', label: 'All' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
+    { value: "", label: "All" },
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
   ];
 
-  const handleApply = () => {
-    // TODO: apply bulk action to selected rows
+  const handleApply = async () => {
+    if (!action) return;
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      alert("Select at least one lab");
+      return;
+    }
+    if (
+      action === "delete" &&
+      !window.confirm(`Delete ${ids.length} lab(s)? This cannot be undone.`)
+    ) {
+      return;
+    }
+    setApplying(true);
+    try {
+      if (action === "enable" || action === "disable") {
+        const batch = writeBatch(db);
+        ids.forEach((id) => {
+          batch.update(doc(db, "labs", id), { active: action === "enable" });
+        });
+        await batch.commit();
+      } else if (action === "delete") {
+        const batch = writeBatch(db);
+        ids.forEach((id) => {
+          batch.delete(doc(db, "labs", id));
+        });
+        await batch.commit();
+      }
+      // clear selection after apply
+      setSelected(new Set());
+      setAction("");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to apply action. Please try again.");
+    } finally {
+      setApplying(false);
+    }
   };
+
+  const handleRowDelete = async (r) => {
+    if (!window.confirm(`Delete "${r.labName || r.labCode}"?`)) return;
+    try {
+      await deleteDoc(doc(db, "labs", r.id));
+      // no need to update local state; onSnapshot will refresh
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete. Please try again.");
+    }
+  };
+
   const handleExport = () => {
-    // TODO: export current rows/filter
+    // Optional: implement CSV export of current "rows"
+    alert("Export not implemented in this snippet.");
   };
 
   const renderLabHeader = () => (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: "100%" }}>
       <Box sx={{ mb: 2.5 }}>
         <Breadcrumbs aria-label="breadcrumb">
           {breadcrumbs.map((b, i) =>
@@ -143,52 +223,85 @@ export default function Coupans() {
         </Breadcrumbs>
       </Box>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 2,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
             <Select
-              style={{ width: "90px" }}
               displayEmpty
               value={action}
               onChange={(e) => setAction(e.target.value)}
-              renderValue={(val) => val ? (bulkActions.find(a => a.value === val)?.label ?? '') : 'No action'}
+              renderValue={(val) =>
+                val
+                  ? bulkActions.find((a) => a.value === val)?.label ?? ""
+                  : "No action"
+              }
               aria-label="Bulk action"
             >
-              <MenuItem value=""><em>No action</em></MenuItem>
+              <MenuItem value="">
+                <em>No action</em>
+              </MenuItem>
               {bulkActions.map((a) => (
-                <MenuItem key={a.value} value={a.value}>{a.label}</MenuItem>
+                <MenuItem key={a.value} value={a.value}>
+                  {a.label}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
 
-          <Button variant="contained" size="small" disabled={!action} onClick={handleApply}>
-            Apply
+          <Button
+            variant="contained"
+            size="small"
+            disabled={!action || applying}
+            onClick={handleApply}
+          >
+            {applying ? "Applying…" : "Apply"}
           </Button>
 
-          <Button startIcon={<DownloadRoundedIcon />} variant="contained" color="error" size="small" onClick={handleExport}>
+          <Button
+            startIcon={<DownloadRoundedIcon />}
+            variant="contained"
+            color="error"
+            size="small"
+            onClick={handleExport}
+          >
             Export
           </Button>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FormControl size="small" sx={{ minWidth: 73 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 100 }}>
             <Select
               displayEmpty
               value={quickFilter}
               onChange={(e) => setQuickFilter(e.target.value)}
-              renderValue={(val) => (!val ? 'All' : (filterOptions.find(f => f.value === val)?.label ?? 'All'))}
+              renderValue={(val) =>
+                !val
+                  ? "All"
+                  : filterOptions.find((f) => f.value === val)?.label ?? "All"
+              }
               aria-label="Quick filter"
             >
-              <MenuItem value=""><em>All</em></MenuItem>
+              <MenuItem value="">
+                <em>All</em>
+              </MenuItem>
               {filterOptions.map((f) => (
-                <MenuItem key={f.value} value={f.value}>{f.label}</MenuItem>
+                <MenuItem key={f.value} value={f.value}>
+                  {f.label}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
 
           <TextField
             size="small"
-            placeholder="search..."
+            placeholder="search labs..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             InputProps={{
@@ -202,11 +315,24 @@ export default function Coupans() {
             aria-label="Search"
           />
 
-          <Button onClick={() => { navigate(""); }} startIcon={<AddIcon />} variant="contained" size="small">
+          <Button
+            onClick={() => {
+              navigate("/labs/new");
+            }}
+            startIcon={<AddIcon />}
+            variant="contained"
+            size="small"
+          >
             New
           </Button>
 
-          <Button startIcon={<FilterListIcon />} variant="contained" color="error" size="small" onClick={() => {}}>
+          <Button
+            startIcon={<FilterListIcon />}
+            variant="contained"
+            color="error"
+            size="small"
+            onClick={() => {}}
+          >
             Advanced Filter
           </Button>
         </Box>
@@ -222,20 +348,28 @@ export default function Coupans() {
     setSortDir(dir);
   };
 
-  // apply search / quick filter (basic demo)
+  // apply search / quick filter (basic)
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return coupons.filter(c => {
-      const statusOk = quickFilter ? c.status.toLowerCase() === quickFilter : true;
-      const textOk = !q
-        ? true
-        : [c.code, c.lab, c.discountValue, c.startAt, c.endAt, c.status]
-            .join(' ')
-            .toLowerCase()
-            .includes(q);
+    return labs.filter((c) => {
+      const statusOk = quickFilter
+        ? (quickFilter === "active" ? c.active : !c.active)
+        : true;
+      const text = [
+        c.labCode,
+        c.labName,
+        c.paymentMode,
+        c.phone,
+        c.email,
+        c.createdAt,
+        c.active ? "active" : "inactive",
+      ]
+        .join(" ")
+        .toLowerCase();
+      const textOk = !q ? true : text.includes(q);
       return statusOk && textOk;
     });
-  }, [coupons, query, quickFilter]);
+  }, [labs, query, quickFilter]);
 
   // apply sorting
   const rows = useMemo(() => {
@@ -244,10 +378,10 @@ export default function Coupans() {
     copy.sort((a, b) => {
       const av = getByPath(a, sortBy);
       const bv = getByPath(b, sortBy);
-      const A = av == null ? '' : av;
-      const B = bv == null ? '' : bv;
-      if (A < B) return sortDir === 'asc' ? -1 : 1;
-      if (A > B) return sortDir === 'asc' ? 1 : -1;
+      const A = av == null ? "" : av;
+      const B = bv == null ? "" : bv;
+      if (A < B) return sortDir === "asc" ? -1 : 1;
+      if (A > B) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
     return copy;
@@ -255,20 +389,22 @@ export default function Coupans() {
 
   // selection state (checkbox column)
   const [selected, setSelected] = useState(() => new Set());
-  const visibleIds = rows.map(r => r.id);
-  const allOnPageSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
+  const visibleIds = rows.map((r) => r.id);
+  const allOnPageSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
   const toggleAllOnPage = (checked) => {
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev);
-      if (checked) visibleIds.forEach(id => next.add(id));
-      else visibleIds.forEach(id => next.delete(id));
+      if (checked) visibleIds.forEach((id) => next.add(id));
+      else visibleIds.forEach((id) => next.delete(id));
       return next;
     });
   };
   const toggleOne = (id, checked) => {
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev);
-      if (checked) next.add(id); else next.delete(id);
+      if (checked) next.add(id);
+      else next.delete(id);
       return next;
     });
   };
@@ -285,28 +421,94 @@ export default function Coupans() {
         />
       </th>
 
-      <th aria-sort={sortBy === "code" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
-        <SortHeader label="Coupon Code" path="code" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      <th
+        aria-sort={
+          sortBy === "labCode"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Lab Code"
+          path="labCode"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
       </th>
 
-      <th aria-sort={sortBy === "lab" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
-        <SortHeader label="Lab" path="lab" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      <th
+        aria-sort={
+          sortBy === "labName"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Lab Name"
+          path="labName"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
       </th>
 
-      <th aria-sort={sortBy === "discountValue" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
-        <SortHeader label="Discount Value" path="discountValue" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      <th
+        aria-sort={
+          sortBy === "paymentMode"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Payment Mode"
+          path="paymentMode"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
       </th>
 
-      <th aria-sort={sortBy === "startAt" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
-        <SortHeader label="Start At" path="startAt" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      <th
+        aria-sort={
+          sortBy === "createdAt"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Created"
+          path="createdAt"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
       </th>
 
-      <th aria-sort={sortBy === "endAt" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
-        <SortHeader label="End At" path="endAt" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
-      </th>
-
-      <th aria-sort={sortBy === "status" ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
-        <SortHeader label="Status" path="status" sortBy={sortBy} sortDir={sortDir} onChange={onSortChange} />
+      <th
+        aria-sort={
+          sortBy === "active"
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : undefined
+        }
+      >
+        <SortHeader
+          label="Status"
+          path="active"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChange={onSortChange}
+        />
       </th>
 
       <th>Action</th>
@@ -316,7 +518,7 @@ export default function Coupans() {
   return (
     <CollectorListUnified
       variant=""
-      title="Collector List"
+      title="Collector Labs"
       rows={rows}
       total={rows.length}
       page={1}
@@ -336,25 +538,34 @@ export default function Coupans() {
               type="checkbox"
               checked={selected.has(r.id)}
               onChange={(e) => toggleOne(r.id, e.target.checked)}
-              aria-label={`Select row ${r.code}`}
+              aria-label={`Select row ${r.labCode}`}
             />
           </td>
 
-          <td>{r.code}</td>
-          <td>{r.lab}</td>
-          <td>{r.discountValue}</td>
-          <td>{r.startAt}</td>
-          <td>{r.endAt}</td>
-          <td>{r.status}</td>
+          <td>{r.labCode}</td>
+          <td>{r.labName}</td>
+          <td>{r.paymentMode || "-"}</td>
+          <td>{r.createdAt || "-"}</td>
+          <td>{r.active ? "Active" : "Inactive"}</td>
           <td>
             <Stack direction="row" spacing={0.5}>
-              <Tooltip title="View">
-                <IconButton size="small" color="primary" aria-label="view" onClick={() => console.log('view', r)}>
+              <Tooltip title="Edit">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  aria-label="edit"
+                  onClick={() => navigate(`/labs/${r.id}/edit`)}
+                >
                   <EditOutlinedIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Delete">
-                <IconButton size="small" color="error" aria-label="delete" onClick={() => console.log('delete', r)}>
+                <IconButton
+                  size="small"
+                  color="error"
+                  aria-label="delete"
+                  onClick={() => handleRowDelete(r)}
+                >
                   <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
               </Tooltip>

@@ -3,20 +3,14 @@ import { useState } from 'react';
 import {
   FiChevronRight, FiChevronDown, FiGrid, FiCalendar, FiUsers, FiStar, FiDollarSign,
   FiFileText, FiBell, FiLifeBuoy, FiChevronLeft, FiList, FiClock, FiCircle, FiCreditCard,
-  FiEdit2, // NEW
-  FiTrendingUp
+  FiEdit2, FiTrendingUp
 } from 'react-icons/fi';
-import { FaFlask } from 'react-icons/fa';
+import { FaFlask, FaListUl } from 'react-icons/fa';
+import { NavLink } from 'react-router-dom';
 
 const sections = [
-  {
-    heading: 'MAIN',
-    items: [{ label: 'Dashboard', icon: <FiGrid />, path: '/dashboard' }],
-  },
-  {
-    heading: 'APPOINTMENT MANAGEMENT',
-    items: [{ label: 'Appointments', icon: <FiCalendar />, path: '/appointments' }],
-  },
+  { heading: 'MAIN', items: [{ label: 'Dashboard', icon: <FiGrid />, path: '/dashboard' }] },
+  { heading: 'APPOINTMENT MANAGEMENT', items: [{ label: 'Appointments', icon: <FiCalendar />, path: '/appointments' }] },
   {
     heading: 'USER MANAGEMENT',
     items: [
@@ -39,61 +33,67 @@ const sections = [
       {
         label: 'Labs',
         icon: <FaFlask />,
-        // make "Labs" a parent as in the design
         children: [
-          { label: 'Labs', icon: <FiEdit2 />, path: '/labs' },                 // enabled
-          { label: 'Lab Session', icon: <FiClock />, path: '/labsession', disabled: true }, // disabled
+          { label: 'Labs', icon: <FiEdit2 />, path: '/labs' },
+          { label: 'Lab Session', icon: <FiClock />, path: '/labsession', disabled: true },
         ],
       },
-      { label: 'Test Case', icon: <FiFileText />,
-          children: [
-          { label: 'TestCaseList', icon: <FiEdit2 />, path: '/testcases' },                 // enabled
-          { label: 'Packages', icon: <FiClock />, path: '/testpackages', disabled: true }, // disabled
-        ], 
-      },
-      { label: 'Prescriptions', icon: <FiFileText />, 
+      {
+        label: 'Test Case',
+        icon: <FiFileText />,
         children: [
-          { label: 'All Prescriptions', icon: <FiEdit2 />, path: '/prescriptions'  },                 // enabled
-          { label: 'Pending Prescriptions', icon: <FiClock />, path: '/pendingpres', disabled: true }, // disabled
-        ], 
-        },
+          { label: 'TestCaseList', icon: <FiEdit2 />, path: '/testcases' },
+          { label: 'Packages', icon: <FiClock />, path: '/testpackages', disabled: true },
+        ],
+      },
+      {
+        label: 'Prescriptions',
+        icon: <FiFileText />,
+        children: [
+          { label: 'All Prescriptions', icon: <FiEdit2 />, path: '/prescriptions' },
+          { label: 'Pending Prescriptions', icon: <FiClock />, path: '/pendingpres', disabled: true },
+        ],
+      },
     ],
   },
-  {
-    heading: 'RATING & REVIEW',
-    items: [{ label: 'Reviews', icon: <FiStar />, path: '/reviews' }],
-  },
+  { heading: 'RATING & REVIEW', items: [{ label: 'Reviews', icon: <FiStar />, path: '/reviews' }] },
   {
     heading: 'FINANCIAL MANAGEMENT',
     items: [
       { label: 'Payment List', icon: <FiDollarSign />, path: '/paymentlist' },
       { label: 'Cash Payment List', icon: <FiDollarSign />, path: '/cashpaymentlist' },
-      { label: 'Payouts', icon: <FiDollarSign />, 
-         children: [
-          { label: 'Collector Payout', icon: <FiCreditCard  />, path: '/payouts'  },                 // enabled
-        ], 
-         },
-      { label: 'Earnings', icon: <FiDollarSign />,
-          children: [
-          { label: 'Collector Earnings', icon: <FiDollarSign  />, path: '/earnings'  },                 // enabled
-        ], 
+      {
+        label: 'Payouts',
+        icon: <FiDollarSign />,
+        children: [{ label: 'Collector Payout', icon: <FiCreditCard />, path: '/payouts' }],
+      },
+      {
+        label: 'Earnings',
+        icon: <FiDollarSign />,
+        children: [{ label: 'Collector Earnings', icon: <FiDollarSign />, path: '/earnings' }],
       },
       { label: 'Coupons', icon: <FiFileText />, path: '/coupans' },
     ],
   },
   {
     heading: 'FINANCIAL MANAGEMENT',
-    items: [{ label: 'Reports', icon: <FiFileText />,
-      children: [
-          { label: 'Top Booked Test Case', icon: <FiTrendingUp  />, path: '/topbook'},                 // enabled
-        ], 
-      }],
+    items: [
+      {
+        label: 'Reports',
+        icon: <FiFileText />,
+        children: [{ label: 'Top Booked Test Case', icon: <FiTrendingUp />, path: '/topbook' }],
+      },
+    ],
   },
   {
     heading: 'HELPDESK MANAGEMENT',
     items: [
       { label: 'Helpdesks', icon: <FiLifeBuoy />, path: '/helpdesks' },
-      { label: 'Notification', icon: <FiBell />, path: '/notifications' },
+      {
+        label: 'Notification',
+        icon: <FiBell />,
+        children: [{ label: 'Notification List', icon: <FaListUl />, path: '/notifications' }],
+      },
     ],
   },
 ];
@@ -103,13 +103,9 @@ export default function Sidebar({
   brandName = 'IsmartLabs',
   defaultOpen = ['MAIN', 'LABORATORY MANAGEMENT', 'FINANCIAL MANAGEMENT', 'USER MANAGEMENT'],
   defaultOpenSub = ['Collectors'],
-
-  // Controlled prop pattern: if `collapsed` is provided, component is controlled; otherwise it self-manages. 
-  // NOTE: no default value here to allow detection of "controlled vs uncontrolled".
   collapsed: controlledCollapsed,
-  onToggle, // optional; used only when controlled
+  onToggle,
 }) {
-  // Section open state
   const [open, setOpen] = useState(() => new Set(defaultOpen));
   const toggleSection = (h) => {
     const n = new Set(open);
@@ -117,7 +113,6 @@ export default function Sidebar({
     setOpen(n);
   };
 
-  // Submenu open state
   const [submenu, setSubmenu] = useState(() => new Set(defaultOpenSub));
   const toggleSubmenu = (label) => {
     const n = new Set(submenu);
@@ -125,25 +120,32 @@ export default function Sidebar({
     setSubmenu(n);
   };
 
-  // Uncontrolled collapsed state fallback
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
   const isControlled = controlledCollapsed !== undefined;
   const collapsed = isControlled ? controlledCollapsed : uncontrolledCollapsed;
-
-  // Single toggle handler used by the button
-  const handleToggle = () => {
-    if (isControlled) {
-      onToggle?.(); // let parent flip the prop
-    } else {
-      setUncontrolledCollapsed((c) => !c); // self-manage when uncontrolled
-    }
-  };
-
+  const handleToggle = () => (isControlled ? onToggle?.() : setUncontrolledCollapsed((c) => !c));
   const width = collapsed ? 72 : 260;
+
+  const disabledHandlers = (disabled) =>
+    disabled
+      ? {
+          'aria-disabled': true,
+          tabIndex: -1,
+          onClick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          },
+        }
+      : {};
 
   return (
     <aside
+      className="sb"
       style={{
+        '--sb-hover-bg': 'var(--primary-50)',
+        '--sb-hover-text': 'var(--text)',
+        '--sb-active-bg': 'var(--primary-100)',
+        '--sb-active-text': 'var(--text)',
         width,
         background: 'var(--panel)',
         borderRight: '1px solid var(--border)',
@@ -156,6 +158,41 @@ export default function Sidebar({
         transition: 'width 160ms ease',
       }}
     >
+      {/* CSS for hover/active states */}
+      <style>{`
+        .sb .sb-link,
+        .sb .sb-child {
+          transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, opacity .15s ease;
+        }
+        .sb .ico {
+          color: var(--primary-600);
+          transition: color .15s ease;
+        }
+        .sb .sb-link:hover,
+        .sb .sb-child:hover {
+          background: var(--sb-hover-bg);
+          color: var(--sb-hover-text);
+        }
+        .sb .sb-link:hover .ico,
+        .sb .sb-child:hover .ico {
+          color: var(--primary-700);
+        }
+        .sb .sb-link.is-active,
+        .sb .sb-child.is-active,
+        .sb .sb-link[aria-current],
+        .sb .sb-child[aria-current] {
+          background: var(--sb-active-bg);
+          color: var(--sb-active-text);
+          box-shadow: inset 3px 0 0 var(--primary-600);
+        }
+        .sb .sb-link.is-active .ico,
+        .sb .sb-child.is-active .ico,
+        .sb .sb-link[aria-current] .ico,
+        .sb .sb-child[aria-current] .ico {
+          color: var(--primary-700);
+        }
+      `}</style>
+
       {/* Brand row */}
       <div
         style={{
@@ -166,11 +203,7 @@ export default function Sidebar({
           padding: '6px 6px 10px 6px',
         }}
       >
-        <img
-          src={logoSrc}
-          alt="Brand"
-          style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }}
-        />
+        <img src={logoSrc} alt="Brand" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }} />
         {!collapsed && <div style={{ fontWeight: 600 }}>{brandName}</div>}
         <button
           type="button"
@@ -234,6 +267,7 @@ export default function Sidebar({
                         onClick={() => toggleSubmenu(it.label)}
                         aria-expanded={isOpen}
                         aria-controls={contentId}
+                        className="sb-link"
                         style={{
                           width: '100%',
                           display: 'flex',
@@ -249,7 +283,7 @@ export default function Sidebar({
                           cursor: 'pointer',
                         }}
                       >
-                        <span style={{ color: 'var(--primary-600)', fontSize: 18 }}>{it.icon}</span>
+                        <span className="ico" style={{ fontSize: 18 }}>{it.icon}</span>
                         {!collapsed && <span>{it.label}</span>}
                         {!collapsed && (
                           <span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>
@@ -259,16 +293,14 @@ export default function Sidebar({
                       </button>
 
                       {!collapsed && isOpen && (
-                        <div
-                          id={contentId}
-                          role="group"
-                          aria-label={`${it.label} submenu`}
-                          style={{ marginLeft: 8 }}
-                        >
+                        <div id={contentId} role="group" aria-label={`${it.label} submenu`} style={{ marginLeft: 8 }}>
                           {it.children.map((child) => (
-                            <a
+                            <NavLink
                               key={child.label}
-                              href={child.path}
+                              to={child.path}
+                              end
+                              title={child.label}
+                              className={({ isActive }) => `sb-child ${isActive ? 'is-active' : ''}`}
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -280,13 +312,14 @@ export default function Sidebar({
                                 textDecoration: 'none',
                                 background: 'transparent',
                                 fontSize: 14,
+                                pointerEvents: child.disabled ? 'none' : 'auto',
+                                opacity: child.disabled ? 0.5 : 1,
                               }}
+                              {...disabledHandlers(child.disabled)}
                             >
-                              <span style={{ color: 'var(--primary-600)', fontSize: 16 }}>
-                                {child.icon}
-                              </span>
+                              <span className="ico" style={{ fontSize: 16 }}>{child.icon}</span>
                               <span>{child.label}</span>
-                            </a>
+                            </NavLink>
                           ))}
                         </div>
                       )}
@@ -296,10 +329,12 @@ export default function Sidebar({
 
                 // Regular leaf item
                 return (
-                  <a
+                  <NavLink
                     key={it.label}
-                    href={it.path}
+                    to={it.path}
+                    end
                     title={collapsed ? it.label : undefined}
+                    className={({ isActive }) => `sb-link ${isActive ? 'is-active' : ''}`}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -309,18 +344,18 @@ export default function Sidebar({
                       borderRadius: 10,
                       color: 'var(--text)',
                       textDecoration: 'none',
-                      background: it.label === 'Dashboard' ? 'var(--primary-50)' : 'transparent',
+                      background: 'transparent',
                       justifyContent: collapsed ? 'center' : 'flex-start',
                     }}
                   >
-                    <span style={{ color: 'var(--primary-600)', fontSize: 18 }}>{it.icon}</span>
+                    <span className="ico" style={{ fontSize: 18 }}>{it.icon}</span>
                     {!collapsed && <span>{it.label}</span>}
                     {!collapsed && (
                       <span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>
                         <FiChevronRight />
                       </span>
                     )}
-                  </a>
+                  </NavLink>
                 );
               })}
             </nav>

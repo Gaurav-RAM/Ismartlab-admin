@@ -2,6 +2,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AdminLayout from "./layout/AdminLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import ProfilePage from "./pages/profile/ProfilePage.jsx";
 import Appointments from "./pages/appointments/Appointments.jsx";
 import AppointmentCreatePage from "./pages/appointments/AppointmentCreatePage.jsx";
 import Collectors from "./pages/collectors/CollectorListPage.jsx";
@@ -38,6 +39,10 @@ import HelpDesks from "./pages/helpdeskmanagement/HelpDesks.jsx";
 import HelpDeskForm from "./pages/helpdeskmanagement/HelpDeskForm.jsx";
 import HelpdeskDetailPage from "./pages/helpdeskmanagement/HelpDeskView.jsx";
 import Earnings from "./pages/FinancialManagement/Earnings.jsx";
+import CollectorLabSesion from "./pages/labs/CollectorLabSesion.jsx";
+import Notification from "./pages/helpdeskmanagement/Notification.jsx";
+
+
 
 
 export default function App() {
@@ -50,7 +55,6 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/appointments/new" element={<AppointmentCreatePage />} />
-
           <Route
             path="/appointments/view/:id"
             element={<AppointmentViewPage />}
@@ -81,6 +85,7 @@ export default function App() {
           <Route path="/topbook" element={<TopBookTestCase />} />
           <Route path="/labs" element={<CollectorLab />} />
           <Route path="/labs/form" element={<CollectorLabForm />} />
+          <Route path="/labs/edit/:id" element={<CollectorLabForm />} />
           <Route path="/labsession" element={<CollectorLabSessionPage />} />
           <Route
             path="/labsession/session"
@@ -107,19 +112,21 @@ export default function App() {
             path="/pendingpres"
             element={<CollectorPendingPrescription />}
           />
-          <Route path="/paymentlist" element={<PaymentList />} />
-          <Route path="/cashpaymentlist" element={<CashPaymentList />} />
-          <Route path="/payouts" element={<Payouts />} />
-          <Route path="/coupans" element={<Coupans />} />
-          <Route path="/earnings" element={<Earnings />} />
-          <Route path="/reviews" element={<CollectorReviews />} />
-          <Route path="/collectors" element={<Collectors />} />
-          <Route path="/labs" element={<Labs />} />
-          <Route path="/test-cases" element={<TestCases />} />
-          <Route path="/helpdesks" element={<HelpDesks />} />
-          <Route path="/helpdesks/hform" element={<HelpDeskForm />} />
+         <Route path="/paymentlist" element={<PaymentList />} />
+         <Route path="/cashpaymentlist" element={<CashPaymentList />} />
+         <Route path="/payouts" element={<Payouts />} />
+         <Route path="/coupans" element={<Coupans />} />
+         <Route path="/earnings" element={<Earnings />} />
+         <Route path="/reviews" element={<CollectorReviews />} />
+         <Route path="/collectors" element={<Collectors />} />
+         <Route path="/labs" element={<Labs />} />
+         <Route path="/test-cases" element={<TestCases />} />
+         <Route path="/helpdesks" element={<HelpDesks />} />
+         <Route path="/helpdesks/hform" element={<HelpDeskForm />} />
          <Route path="/helpdesks/view/:id" element={<HelpdeskDetailPage />} />
-          
+         <Route path="/labs/edits/:id" element={<CollectorLabSesion />} />
+         <Route path="/profile" element={<ProfilePage />} />
+         <Route path="/notifications" element={<Notification />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
