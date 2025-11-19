@@ -233,7 +233,7 @@ function RangePicker({ range, onChange, onSubmit }) {
             right: 0,
             zIndex: 10,
             padding: 12,
-            width: 360,
+            width: 'clamp(280px, 90vw, 360px)', // responsive width
             background: 'var(--panel, #fff)',
             border: '1px solid var(--border, #e5e7eb)',
             borderRadius: 10,
@@ -417,6 +417,26 @@ function BarChartCard({ title, data, yPrefix = '$' }) {
       gradient: { shade: 'light', type: 'vertical', opacityFrom: 0.9, opacityTo: 0.7 },
     },
     noData: { text: 'No data' },
+
+    // Responsive overrides
+    responsive: [
+      {
+        breakpoint: 1024,
+        options: {
+          plotOptions: { bar: { columnWidth: '55%' } },
+          xaxis: { labels: { rotate: 0 } },
+        },
+      },
+      {
+        breakpoint: 640,
+        options: {
+          chart: { height: 260 },
+          plotOptions: { bar: { columnWidth: '60%' } },
+          xaxis: { labels: { rotate: 0 } },
+          legend: { position: 'bottom' },
+        },
+      },
+    ],
   };
 
   return (
@@ -658,6 +678,7 @@ export default function Dashboard() {
           alignItems: 'center',
           gap: 10,
           marginBottom: 18,
+          flexWrap: 'wrap',
         }}
       >
         <RangePicker
@@ -710,7 +731,7 @@ export default function Dashboard() {
         <div className="cols-6">
           <div className="card">
             <h3 className="chart-title">Pending Collector Approval</h3>
-            <div style={{ padding: 12 }}>
+            <div className="table-scroll" style={{ padding: 12 }}>
               <table
                 className="table"
                 style={{
@@ -796,7 +817,7 @@ export default function Dashboard() {
         <div className="cols-6">
           <div className="card">
             <h3 className="chart-title">Pending Review Prescriptions</h3>
-            <div style={{ padding: 12 }}>
+            <div className="table-scroll" style={{ padding: 12 }}>
               <table
                 className="table"
                 style={{

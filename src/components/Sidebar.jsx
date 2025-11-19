@@ -150,10 +150,11 @@ export default function Sidebar({
         background: 'var(--panel)',
         borderRight: '1px solid var(--border)',
         height: '100vh',
-        padding: 12,
+        padding: collapsed ? 8 : 12, // tighter in collapsed rail
         position: 'sticky',
         top: 0,
         overflowY: 'auto',
+        overflowX: 'hidden',
         alignSelf: 'start',
         transition: 'width 160ms ease',
       }}
@@ -196,14 +197,20 @@ export default function Sidebar({
       {/* Brand row */}
       <div
         style={{
+          position: 'relative', // positioning context for absolute toggle
           display: 'flex',
           alignItems: 'center',
           gap: collapsed ? 0 : 10,
           justifyContent: collapsed ? 'center' : 'flex-start',
-          padding: '6px 6px 10px 6px',
+          padding: collapsed ? '6px' : '6px 6px 10px 6px',
+          minHeight: 40,
         }}
       >
-        <img src={logoSrc} alt="Brand" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }} />
+        <img
+          src={logoSrc}
+          alt="Brand"
+          style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }}
+        />
         {!collapsed && <div style={{ fontWeight: 600 }}>{brandName}</div>}
         <button
           type="button"
@@ -211,7 +218,10 @@ export default function Sidebar({
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={collapsed ? 'Expand' : 'Collapse'}
           style={{
-            marginLeft: 'auto',
+            position: 'absolute', // always visible in narrow rail
+            right: 6,
+            top: 6,
+            zIndex: 2,
             width: 28,
             height: 28,
             borderRadius: '999px',
@@ -273,7 +283,7 @@ export default function Sidebar({
                           display: 'flex',
                           alignItems: 'center',
                           gap: 10,
-                          padding: '10px 12px',
+                          padding: collapsed ? '10px 8px' : '10px 12px',
                           margin: '6px 0',
                           borderRadius: 10,
                           color: 'var(--text)',
@@ -293,7 +303,12 @@ export default function Sidebar({
                       </button>
 
                       {!collapsed && isOpen && (
-                        <div id={contentId} role="group" aria-label={`${it.label} submenu`} style={{ marginLeft: 8 }}>
+                        <div
+                          id={contentId}
+                          role="group"
+                          aria-label={`${it.label} submenu`}
+                          style={{ marginLeft: 8 }}
+                        >
                           {it.children.map((child) => (
                             <NavLink
                               key={child.label}
@@ -339,7 +354,7 @@ export default function Sidebar({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 10,
-                      padding: '10px 12px',
+                      padding: collapsed ? '10px 8px' : '10px 12px',
                       margin: '6px 0',
                       borderRadius: 10,
                       color: 'var(--text)',

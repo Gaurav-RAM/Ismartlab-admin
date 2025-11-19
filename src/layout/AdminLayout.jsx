@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar.jsx';
 import Topbar from '../components/Topbar.jsx';
-import Footer from '../components/Footer.jsx'; // new
+import Footer from '../components/Footer.jsx';
 
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -15,23 +15,24 @@ export default function AdminLayout() {
         display: 'grid',
         gridTemplateColumns: `${collapsed ? '72px' : '260px'} minmax(0, 1fr)`,
         minHeight: '100vh',
-        background: 'var(--app-bg, #fafafa)',
+        background: 'var(--bg)',           // themed background
+        color: 'var(--text)',              // themed text color
       }}
     >
-      {/* Left: persistent sidebar */}
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed(c => !c)}
       />
 
-      {/* Right: topbar + routed content + footer */}
       <div
         className="content"
         style={{
           minWidth: 0,
           display: 'grid',
-          gridTemplateRows: 'auto 1fr auto', // header | main | footer
+          gridTemplateRows: 'auto 1fr auto',
           minHeight: '100vh',
+          background: 'var(--bg)',         // ensure the right pane is themed
+          color: 'var(--text)',
         }}
       >
         <Topbar />
@@ -40,7 +41,9 @@ export default function AdminLayout() {
           className="main"
           style={{
             padding: 18,
-            overflow: 'auto', // scroll only the main area
+            overflow: 'auto',
+            background: 'var(--bg)',       // theme main scroll area
+            color: 'var(--text)',
           }}
           role="main"
         >
