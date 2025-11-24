@@ -1,5 +1,7 @@
 // src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
 import AdminLayout from "./layout/AdminLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import ProfilePage from "./pages/profile/ProfilePage.jsx";
@@ -41,7 +43,7 @@ import HelpdeskDetailPage from "./pages/helpdeskmanagement/HelpDeskView.jsx";
 import Earnings from "./pages/FinancialManagement/Earnings.jsx";
 import CollectorLabSesion from "./pages/labs/CollectorLabSesion.jsx";
 import Notification from "./pages/helpdeskmanagement/Notification.jsx";
-
+import Info from "./pages/myinfo/Info.jsx";
 
 
 
@@ -127,6 +129,7 @@ export default function App() {
          <Route path="/labs/edits/:id" element={<CollectorLabSesion />} />
          <Route path="/profile" element={<ProfilePage />} />
          <Route path="/notifications" element={<Notification />} />
+         <Route path="/info" element={<Info />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

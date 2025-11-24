@@ -89,7 +89,6 @@ const TopActions = styled.div`
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: #fff;
   border-bottom: 1px solid #e3e8ee;
 `;
 
@@ -505,7 +504,7 @@ export default function Topbar() {
                 </ProfileMenuHeader>
                 <ProfileMenuList>
                   <ProfileMenuItem onClick={() => { setOpen(false); navigate("/profile"); }}><FiUser /> My Profile</ProfileMenuItem>
-                  <ProfileMenuItem onClick={() => setOpen(false)}><FiInfo /> My Info</ProfileMenuItem>
+                  <ProfileMenuItem onClick={() =>{ setOpen(false); navigate("/info");}}><FiInfo /> My Info</ProfileMenuItem>
                   <ProfileMenuItem onClick={() => setOpen(false)}><FiRotateCcw /> Subscription History</ProfileMenuItem>
                   <ProfileMenuItem onClick={() => setOpen(false)}><FiDollarSign /> Wallet<ProfileMenuItemEnd>$0.00</ProfileMenuItemEnd></ProfileMenuItem>
                   <ProfileMenuItem onClick={handleLogout}><FiLogOut /> Logout</ProfileMenuItem>
