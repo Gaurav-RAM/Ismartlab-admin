@@ -10,6 +10,7 @@ import {
   getCountFromServer, getAggregateFromServer, sum, Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import styled from 'styled-components';
 
 import { FiUserCheck, FiUsers, FiCalendar, FiDollarSign, FiEye } from 'react-icons/fi';
 import { FaWallet, FaFlask } from 'react-icons/fa';
@@ -116,6 +117,182 @@ function Avatar({ name }) {
   );
 }
 
+const Wrapper = styled.div`
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+
+  /* mobile breakpoint */
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+`;
+
+const TriggerButton = styled.button`
+  height: 40px;
+  min-width: 260px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel, #fff);
+  color: var(--text, #111827);
+  text-align: left;
+  cursor: pointer;
+
+  @media (max-width: 600px) {
+    width: 100%;
+  }
+`;
+
+const SubmitButton = styled.button`
+  height: 40px;
+  padding: 0 16px;
+  background: var(--primary-600, #4f46e5);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: ${({ disabled }) => (disabled ? 0.6 : 1)};
+
+  @media (max-width: 600px) {
+    width: 30%;
+  }
+`;
+
+const Popover = styled.div`
+  position: absolute;
+  top: 46px;
+  right: 0;
+  z-index: 10;
+  padding: 12px;
+  width: clamp(280px, 90vw, 360px);
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+
+  @media (max-width: 600px) {
+    right: auto;
+    left: 0;
+    width: 100%;
+  }
+`;
+
+const Row = styled.div`
+  display: flex;
+  gap: 10px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+`;
+
+const Label = styled.label`
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+`;
+
+const DateInput = styled.input`
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+`;
+
+const PresetsRow = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+`;
+
+const PresetButton = styled.button`
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  cursor: pointer;
+`;
+
+const ErrorText = styled.div`
+  color: #b91c1c;
+  font-size: 12px;
+  margin-top: 8px;
+`;
+
+const FooterRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+
+  @media (max-width: 600px) {
+    flex-direction: column-reverse;
+    button {
+      width: 100%;
+    }
+  }
+`;
+
+const GhostButton = styled.button`
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+`;
+
+const PrimaryButton = styled.button`
+  height: 34px;
+  padding: 0 12px;
+  background: var(--primary-600, #4f46e5);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: ${({ disabled }) => (disabled ? 0.6 : 1)};
+`;
+
+const LayoutRow = styled.div`
+  display: flex;
+  align-items: stretch;
+  gap: 16px; /* optional */
+`;
+
+const LeftCol = styled.div`
+  flex: 0 0 66.6667%;
+`;
+
+const RightCol = styled.div`
+  flex: 0 0 33.3333%;
+`;
+
+const StatsGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  margin: -9px; /* to balance the 9px inner padding if you want tight grid */
+`;
+
+const StatCol = styled.div`
+  width: 33.3333%;
+  padding: 9px;
+`;
+
+const StatColWithTopMargin = styled(StatCol)`
+  margin-top: 18px;
+`;
+
+const PieWrapper = styled.div`
+  height: 330px;
+`;
+
 /* -------- Top-right date range (popover) -------- */
 function RangePicker({ range, onChange, onSubmit }) {
   const [open, setOpen] = useState(false);
@@ -180,172 +357,77 @@ function RangePicker({ range, onChange, onSubmit }) {
   ];
 
   return (
-    <div style={{ position: 'relative', display: 'flex', gap: 12, alignItems: 'center' }}>
-      <button
+      <Wrapper>
+      <TriggerButton
         ref={triggerRef}
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        style={{
-          height: 40,
-          minWidth: 260,
-          padding: '0 12px',
-          borderRadius: 8,
-          border: '1px solid var(--border)',
-          background: 'var(--panel, #fff)',
-          color: 'var(--text, #111827)',
-          textAlign: 'left',
-          cursor: 'pointer',
-        }}
         title="Pick date range"
       >
         {humanLabel}
-      </button>
+      </TriggerButton>
 
-      <button
-        type="button"
-        onClick={apply}
-        style={{
-          height: 40,
-          padding: '0 16px',
-          background: 'var(--primary-600, #4f46e5)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 8,
-          cursor: 'pointer',
-          opacity: invalid ? 0.6 : 1,
-        }}
-        disabled={invalid}
-      >
+      <SubmitButton type="button" onClick={apply} disabled={invalid}>
         Submit
-      </button>
+      </SubmitButton>
 
       {open && (
-        <div
+        <Popover
           ref={popoverRef}
           role="dialog"
           aria-modal="true"
           aria-label="Select date range"
-          style={{
-            position: 'absolute',
-            top: 46,
-            right: 0,
-            zIndex: 10,
-            padding: 12,
-            width: 'clamp(280px, 90vw, 360px)', // responsive width
-            background: 'var(--panel, #fff)',
-            border: '1px solid var(--border, #e5e7eb)',
-            borderRadius: 10,
-            boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
-          }}
         >
-          <div style={{ display: 'flex', gap: 10 }}>
+          <Row>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)' }}>
-                Start
-              </label>
-              <input
+              <Label>Start</Label>
+              <DateInput
                 type="date"
                 value={tmp.start}
-                onChange={(e) => setTmp(r => ({ ...r, start: e.target.value }))}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  background: 'var(--panel)',
-                }}
+                onChange={e => setTmp(r => ({ ...r, start: e.target.value }))}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)' }}>
-                End
-              </label>
-              <input
+              <Label>End</Label>
+              <DateInput
                 type="date"
                 value={tmp.end}
-                onChange={(e) => setTmp(r => ({ ...r, end: e.target.value }))}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  background: 'var(--panel)',
-                }}
+                onChange={e => setTmp(r => ({ ...r, end: e.target.value }))}
               />
             </div>
-          </div>
+          </Row>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-            {presets.map((p) => (
-              <button
+          <PresetsRow>
+            {presets.map(p => (
+              <PresetButton
                 key={p.label}
                 type="button"
                 onClick={() => setTmp(normalizeRange(p.get()))}
-                style={{
-                  height: 32,
-                  padding: '0 10px',
-                  borderRadius: 999,
-                  border: '1px solid var(--border)',
-                  background: 'var(--panel)',
-                  cursor: 'pointer',
-                }}
               >
                 {p.label}
-              </button>
+              </PresetButton>
             ))}
-          </div>
+          </PresetsRow>
 
           {invalid && (
-            <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 8 }}>
+            <ErrorText>
               End date cannot be before start date
-            </div>
+            </ErrorText>
           )}
 
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: 8,
-              marginTop: 10,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              style={{
-                height: 34,
-                padding: '0 12px',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                background: 'transparent',
-                cursor: 'pointer',
-              }}
-            >
+          <FooterRow>
+            <GhostButton type="button" onClick={() => setOpen(false)}>
               Close
-            </button>
-            <button
-              type="button"
-              onClick={apply}
-              disabled={invalid}
-              style={{
-                height: 34,
-                padding: '0 12px',
-                background: 'var(--primary-600, #4f46e5)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                cursor: 'pointer',
-                opacity: invalid ? 0.6 : 1,
-              }}
-            >
+            </GhostButton>
+            <PrimaryButton type="button" onClick={apply} disabled={invalid}>
               Apply
-            </button>
-          </div>
-        </div>
+            </PrimaryButton>
+          </FooterRow>
+        </Popover>
       )}
-    </div>
+    </Wrapper>
   );
 }
 
@@ -690,31 +772,32 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid" style={{ alignItems: 'stretch' }}>
-        <div className="cols-8">
-          <div className="grid">
-            {stats.slice(0, 3).map((s) => (
-              <div key={s.label} className="cols-4">
-                <StatCard label={s.label} value={s.value} icon={s.icon} />
-              </div>
-            ))}
-            {stats.slice(3).map((s) => (
-              <div key={s.label} className="cols-4" style={{ marginTop: 18 }}>
-                <StatCard label={s.label} value={s.value} icon={s.icon} />
-              </div>
-            ))}
-          </div>
-        </div>
+        <LayoutRow>
+        <LeftCol>
+        <StatsGrid>
+      {stats.slice(0, 3).map((s) => (
+        <StatCol key={s.label}>
+        <StatCard label={s.label} value={s.value} icon={s.icon} />
+        </StatCol>
+      ))}
 
-        <div className="cols-4">
-          <div style={{ height: 330 }}>
-            <PieCard
-              title="Proportion Of Appointments: Tests Vs Packages"
-              data={pie}
-            />
-          </div>
-        </div>
-      </div>
+      {stats.slice(3).map((s) => (
+        <StatColWithTopMargin key={s.label}>
+          <StatCard label={s.label} value={s.value} icon={s.icon} />
+        </StatColWithTopMargin>
+      ))}
+    </StatsGrid>
+  </LeftCol>
+
+  <RightCol>
+    <PieWrapper>
+      <PieCard
+        title="Proportion Of Appointments: Tests Vs Packages"
+        data={pie}
+      />
+    </PieWrapper>
+  </RightCol>
+</LayoutRow>
 
       <div className="grid" style={{ marginTop: 18 }}>
         <div className="cols-12">

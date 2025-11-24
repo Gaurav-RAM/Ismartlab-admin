@@ -328,46 +328,6 @@ export default function TestCases() {
 
   // header UI
   const breadcrumbs = [{ label: 'Dashboard', to: '/' }, { label: 'Test Case List' }];
-  // const renderHeader = () => (
-  //   <Box sx={{ width: '100%' }}>
-  //     <Box sx={{ mb: 2.5 }}>
-  //       <Breadcrumbs aria-label="breadcrumb">
-  //         {breadcrumbs.map((b, i) => b.to
-  //           ? <Link key={i} component={RouterLink} underline="hover" to={b.to}>{b.label}</Link>
-  //           : <Typography key={i}>{b.label}</Typography>
-  //         )}
-  //       </Breadcrumbs>
-  //     </Box>
-  //     <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-  //       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-  //         <FormControl size="small" sx={{ minWidth: 120 }}>
-  //           <Select displayEmpty value={action} onChange={(e) => setQuickFilter(e.target.value)}
-  //            renderValue={(val)=>val ? ({ mark_done:'Mark Done', mark_pending:'Mark Pending', cancel:'Cancel' }[val]) : 'No action'} aria-label="Bulk action" style={{ height:'40px' }}>
-  //             <MenuItem value=""><em>No action</em></MenuItem>
-  //             <MenuItem value="mark_done">Mark Done</MenuItem>
-  //             <MenuItem value="mark_pending">Mark Pending</MenuItem>
-  //             <MenuItem value="cancel">Cancel</MenuItem>
-  //           </Select>
-  //         </FormControl>
-  //         <Button variant="contained" size="small" disabled={!action || selectedIds.size === 0} onClick={handleApply} style={{height:'40px'}}>Apply</Button>
-  //         <Button startIcon={<DownloadRoundedIcon />} variant="contained" color="error" size="small" onClick={handleExport} style={{height:'40px'}}>Export</Button>
-  //       </Box>
-  //       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-  //         <FormControl size="small" sx={{ minWidth: 120 }}>
-  //           <Select displayEmpty value={quickFilter} onChange={(e)=>setQuickFilter(e.target.value)} renderValue={(val)=>!val?'All status':val} aria-label="Quick status filter" style={{ height:'40px' }}>
-  //             <MenuItem value=""><em>All status</em></MenuItem>
-  //             <MenuItem value="pending">Pending</MenuItem>
-  //             <MenuItem value="done">Done</MenuItem>
-  //             <MenuItem value="cancelled">Cancelled</MenuItem>
-  //           </Select>
-  //         </FormControl>
-  //         <TextField size="small" placeholder="Search test/lab/category…" value={searchText} onChange={(e)=>setSearchText(e.target.value)} InputProps={{ startAdornment:(<InputAdornment position="start"><SearchIcon /></InputAdornment>) }} sx={{ minWidth: 320 }} aria-label="Search" style={{height:'40px'}} />
-  //         <Button onClick={()=>navigate('testform')} startIcon={<AddIcon />} variant="contained" size="small" style={{height:'40px'}}>New</Button>
-  //         <Button startIcon={<FilterListIcon />} variant="contained" color="error" size="small" onClick={()=>setOpenAdv(true)} style={{height:'40px'}}>Advanced Filter</Button>
-  //       </Box>
-  //     </Box>
-  //   </Box>
-  // );
 
   const renderHead = () => (
     <tr>

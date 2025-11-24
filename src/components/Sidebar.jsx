@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import { FaFlask, FaListUl } from 'react-icons/fa';
 import { NavLink } from 'react-router-dom';
+import styled from 'styled-components';
 
 const sections = [
   { heading: 'MAIN', items: [{ label: 'Dashboard', icon: <FiGrid />, path: '/dashboard' }] },
@@ -197,7 +198,7 @@ export default function Sidebar({
       {/* Brand row */}
       <div
         style={{
-          position: 'relative', // positioning context for absolute toggle
+          position: 'relative',
           display: 'flex',
           alignItems: 'center',
           gap: collapsed ? 0 : 10,
@@ -206,10 +207,8 @@ export default function Sidebar({
           minHeight: 40,
         }}
       >
-        <img
+        <MainImage
           src={logoSrc}
-          alt="Brand"
-          style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }}
         />
         {!collapsed && <div style={{ fontWeight: 600 }}>{brandName}</div>}
         <button
@@ -218,7 +217,7 @@ export default function Sidebar({
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={collapsed ? 'Expand' : 'Collapse'}
           style={{
-            position: 'absolute', // always visible in narrow rail
+            position: 'absolute',
             right: 6,
             top: 6,
             zIndex: 2,
@@ -380,3 +379,16 @@ export default function Sidebar({
     </aside>
   );
 }
+const MainImage = styled.img`
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+
+  @media (min-width: 601px) {
+    display: none;
+    width: 0 !important;
+    height: 0 !important;
+  }
+`;
+
